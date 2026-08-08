@@ -1,17 +1,11 @@
 package com.careflow.ai.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "file_attachments")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class FileAttachment {
 
     @Id
@@ -40,6 +34,32 @@ public class FileAttachment {
 
     @Column(name = "uploaded_at", updatable = false)
     private LocalDateTime uploadedAt;
+
+    public FileAttachment() {}
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public Patient getPatient() { return patient; }
+    public void setPatient(Patient patient) { this.patient = patient; }
+
+    public User getUploadedBy() { return uploadedBy; }
+    public void setUploadedBy(User uploadedBy) { this.uploadedBy = uploadedBy; }
+
+    public String getCloudinaryUrl() { return cloudinaryUrl; }
+    public void setCloudinaryUrl(String cloudinaryUrl) { this.cloudinaryUrl = cloudinaryUrl; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+
+    public String getMimeType() { return mimeType; }
+    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+
+    public Long getSize() { return size; }
+    public void setSize(Long size) { this.size = size; }
+
+    public LocalDateTime getUploadedAt() { return uploadedAt; }
+    public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
 
     @PrePersist
     protected void onCreate() {
