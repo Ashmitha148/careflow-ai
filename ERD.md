@@ -1,6 +1,6 @@
 # CareFlow AI — Entity Relationship Diagram (ERD)
 
-CareFlow AI centers around an append-only **Patient Timeline** (`timeline_events`). Clinical actions (diagnoses, medications, administration records, vitals, shift handoffs, tasks, file attachments) are automatically converted into chronological timeline events. Corrections refer back to previous events (`corrects_event_id`) to preserve append-only immutability.
+CareFlow AI centers around an append-only **Patient Timeline** (`timeline_events`). Clinical actions (diagnoses, medications, administration records, vitals, shift handoffs, tasks, file attachments, appointments) are automatically recorded as chronological timeline events. Corrections refer back to previous events (`corrects_event_id`) to preserve append-only immutability.
 
 ```mermaid
 erDiagram
@@ -19,6 +19,8 @@ erDiagram
     users ||--o{ ai_prompt_history : "requested_by"
     users ||--o{ file_attachments : "uploaded_by"
     users ||--o{ audit_logs : "performed_by"
+    users ||--o{ notifications : "receives"
+    users ||--o{ appointments : "conducted_by"
 
     patients ||--o{ patient_access : "granted_access"
     patients ||--o{ timeline_events : "has_events"
@@ -32,6 +34,7 @@ erDiagram
     patients ||--o{ appointments : "has_appointments"
 
     medications ||--o{ medication_administration : "has_administrations"
+    timeline_events ||--o| timeline_events : "corrects_event"
 
     users {
         uuid id PK
@@ -57,7 +60,7 @@ erDiagram
     patient_access {
         uuid patient_id PK,FK
         uuid user_id PK,FK
-        string relationship "FAMILY | PRIMARY_CAREGIVER"
+        string relationship "PRIMARY_CAREGIVER | FAMILY"
     }
 
     timeline_events {
@@ -155,7 +158,7 @@ erDiagram
         string cloudinary_url
         string file_name
         string mime_type
-        long size
+        bigint size
         timestamp uploaded_at
     }
 
