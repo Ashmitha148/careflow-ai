@@ -21,6 +21,7 @@
         <java.version>17</java.version>
         <jjwt.version>0.11.5</jjwt.version>
         <cloudinary.version>1.38.0</cloudinary.version>
+        <lombok.version>1.18.36</lombok.version>
     </properties>
 
     <dependencies>
@@ -135,6 +136,15 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <!-- Lombok disabled here due to JDK 25 compatibility issues. Plain Java entities used instead. -->
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
