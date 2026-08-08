@@ -117,7 +117,7 @@ public class VitalService {
         String value = vital.getValue().trim();
 
         try {
-            switch (vitalgit status.getType()) {
+            switch (vital.getType()) {
 
                 case OXYGEN:
                     return Double.parseDouble(value) < 90.0;
