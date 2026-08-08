@@ -1,17 +1,11 @@
 package com.careflow.ai.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "vitals")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Vital {
 
     @Id
@@ -35,6 +29,66 @@ public class Vital {
 
     @Column(name = "recorded_at")
     private LocalDateTime recordedAt;
+
+    public Vital() {}
+
+    public Vital(UUID id, Patient patient, User recordedBy, VitalType type,
+                 String value, LocalDateTime recordedAt) {
+        this.id = id;
+        this.patient = patient;
+        this.recordedBy = recordedBy;
+        this.type = type;
+        this.value = value;
+        this.recordedAt = recordedAt;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Patient getPatient() {
+        return patient;
+    }
+
+    public void setPatient(Patient patient) {
+        this.patient = patient;
+    }
+
+    public User getRecordedBy() {
+        return recordedBy;
+    }
+
+    public void setRecordedBy(User recordedBy) {
+        this.recordedBy = recordedBy;
+    }
+
+    public VitalType getType() {
+        return type;
+    }
+
+    public void setType(VitalType type) {
+        this.type = type;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
+    }
+
+    public LocalDateTime getRecordedAt() {
+        return recordedAt;
+    }
+
+    public void setRecordedAt(LocalDateTime recordedAt) {
+        this.recordedAt = recordedAt;
+    }
 
     @PrePersist
     protected void onCreate() {
