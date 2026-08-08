@@ -1,17 +1,11 @@
 package com.careflow.ai.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "medications")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Medication {
 
     @Id
@@ -43,6 +37,48 @@ public class Medication {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    @Builder.Default
     private MedStatus status = MedStatus.ACTIVE;
+
+    public Medication() {}
+
+    public Medication(UUID id, Patient patient, User prescribedBy, String name,
+                       String dosage, String frequency, LocalDate startDate,
+                       LocalDate endDate, MedStatus status) {
+        this.id = id;
+        this.patient = patient;
+        this.prescribedBy = prescribedBy;
+        this.name = name;
+        this.dosage = dosage;
+        this.frequency = frequency;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.status = status;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public Patient getPatient() { return patient; }
+    public void setPatient(Patient patient) { this.patient = patient; }
+
+    public User getPrescribedBy() { return prescribedBy; }
+    public void setPrescribedBy(User prescribedBy) { this.prescribedBy = prescribedBy; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDosage() { return dosage; }
+    public void setDosage(String dosage) { this.dosage = dosage; }
+
+    public String getFrequency() { return frequency; }
+    public void setFrequency(String frequency) { this.frequency = frequency; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+    public LocalDate getEndDate() { return endDate; }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
+    public MedStatus getStatus() { return status; }
+    public void setStatus(MedStatus status) { this.status = status; }
 }

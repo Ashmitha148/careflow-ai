@@ -1,17 +1,11 @@
 package com.careflow.ai.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "medication_administration")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class MedicationAdministration {
 
     @Id
@@ -35,6 +29,39 @@ public class MedicationAdministration {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    public MedicationAdministration() {}
+
+    public MedicationAdministration(UUID id, Medication medication,
+                                    User administeredBy,
+                                    LocalDateTime administeredAt,
+                                    AdminStatus status,
+                                    String notes) {
+        this.id = id;
+        this.medication = medication;
+        this.administeredBy = administeredBy;
+        this.administeredAt = administeredAt;
+        this.status = status;
+        this.notes = notes;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public Medication getMedication() { return medication; }
+    public void setMedication(Medication medication) { this.medication = medication; }
+
+    public User getAdministeredBy() { return administeredBy; }
+    public void setAdministeredBy(User administeredBy) { this.administeredBy = administeredBy; }
+
+    public LocalDateTime getAdministeredAt() { return administeredAt; }
+    public void setAdministeredAt(LocalDateTime administeredAt) { this.administeredAt = administeredAt; }
+
+    public AdminStatus getStatus() { return status; }
+    public void setStatus(AdminStatus status) { this.status = status; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     @PrePersist
     protected void onCreate() {
