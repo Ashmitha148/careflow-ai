@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +24,8 @@ public interface TimelineEventRepository extends JpaRepository<TimelineEvent, UU
 
     List<TimelineEvent> findByPatient_IdAndEventTypeAndCreatedAtBetweenOrderByCreatedAtAsc(
             UUID patientId, EventType eventType, LocalDateTime start, LocalDateTime end);
+
+    List<TimelineEvent> findByPatient_IdInOrderByCreatedAtDesc(Collection<UUID> patientIds);
 
     @Query("""
             SELECT e FROM TimelineEvent e

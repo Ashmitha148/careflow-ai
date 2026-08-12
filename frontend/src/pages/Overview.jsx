@@ -15,29 +15,46 @@ import { useNavigate } from "react-router-dom";
 import { usePatients } from "../services/patientHooks";
 import { useStore } from "../store/useStore";
 import { useAuth } from "../context/AuthContext";
+import { useEffect, useState } from "react";
+import { getDashboardSummary } from "../services/dashboardApi";
 
 
 
-const activity = [
-  {
-    icon: HeartPulse,
-    title: "Vital recorded",
-    description: "James Wilson � Oxygen saturation 88%",
-    time: "2 min ago",
-  },
-  {
-    icon: FileText,
-    title: "Task completed",
-    description: "Medication reconciliation � Elena Martinez",
-    time: "18 min ago",
-  },
-  {
-    icon: Users,
-    title: "Shift handoff created",
-    description: "Robert Chen � Evening shift",
-    time: "31 min ago",
-  },
-];
+const activityIcons = {
+  VITAL: HeartPulse,
+  TASK: FileText,
+  SHIFT_HANDOFF: Users,
+  MEDICATION: Pill,
+  MEDICATION_ADMINISTRATION: Pill,
+  DIAGNOSIS: FileText,
+  CRITICAL_ALERT: ShieldAlert,
+  APPOINTMENT: CalendarDays,
+  FILE_UPLOAD: FileText,
+};
+
+const activityTitles = {
+  VITAL: "Vital recorded",
+  TASK: "Task recorded",
+  SHIFT_HANDOFF: "Shift handoff created",
+  MEDICATION: "Medication prescribed",
+  MEDICATION_ADMINISTRATION: "Medication administered",
+  DIAGNOSIS: "Diagnosis recorded",
+  CRITICAL_ALERT: "Critical alert",
+  APPOINTMENT: "Appointment scheduled",
+  FILE_UPLOAD: "File uploaded",
+};
+
+function timeAgo(value) {
+  if (!value) return "Unknown time";
+  const seconds = Math.round((Date.now() - new Date(value).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return minutes + " min ago";
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return hours + " hr ago";
+  const days = Math.round(hours / 24);
+  return days + (days === 1 ? " day ago" : " days ago");
+}
 
 function StatusDot({ tone }) {
   const classes = {
@@ -55,6 +72,24 @@ export default function Overview() {
   const { user: currentUser } = useAuth();
   const { patients, loading: patientsLoading, error: patientsError } = usePatients();
 
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    getDashboardSummary()
+      .then((data) => { if (active) setSummary(data); })
+      .catch((err) => { if (active) setSummaryError(err); })
+      .finally(() => { if (active) setSummaryLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const stat = (value) => (summaryError ? "- -" : summary ? value : "...");
+  const tasksCompletedLabel = summaryError ? "- -" : summary ? (summary.tasksCompleted + " / " + summary.tasksTotal) : "...";
+  const taskProgress = summary && summary.tasksTotal > 0 ? Math.round((summary.tasksCompleted / summary.tasksTotal) * 100) : 0;
+  const todayLabel = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
   const firstName = currentUser?.fullName?.split(" ")[0] || "there";
 
   const openPatient = (patient) => {
@@ -67,7 +102,7 @@ export default function Overview() {
       <section className="flex flex-col justify-between gap-5 pt-2 sm:flex-row sm:items-end">
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-teal-500">
-            Saturday � August 8, 2026
+            {todayLabel}
           </p>
 
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -111,7 +146,7 @@ export default function Overview() {
             </div>
             <span className="text-xs text-[var(--text-muted)]">Today</span>
           </div>
-          <p className="mt-5 text-2xl font-semibold">4</p>
+          <p className="mt-5 text-2xl font-semibold">{stat(summary?.tasksAwaitingAction)}</p>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Tasks awaiting action
           </p>
@@ -124,7 +159,7 @@ export default function Overview() {
             </div>
             <span className="text-xs text-[var(--text-muted)]">Today</span>
           </div>
-          <p className="mt-5 text-2xl font-semibold">6</p>
+          <p className="mt-5 text-2xl font-semibold">{stat(summary?.upcomingAppointments)}</p>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Upcoming appointments
           </p>
@@ -226,24 +261,24 @@ export default function Overview() {
                 <span className="text-[var(--text-secondary)]">
                   Tasks completed
                 </span>
-                <span className="font-medium">8 / 12</span>
+                <span className="font-medium">{tasksCompletedLabel}</span>
               </div>
 
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-                <div className="h-full w-[67%] rounded-full bg-teal-500" />
+                <div className="h-full rounded-full bg-teal-500" style={{ width: taskProgress }} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-                <p className="text-xl font-semibold">12</p>
+                <p className="text-xl font-semibold">{stat(summary?.activePatients)}</p>
                 <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                   Active patients
                 </p>
               </div>
 
               <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-                <p className="text-xl font-semibold">2</p>
+                <p className="text-xl font-semibold">{stat(summary?.handoffs)}</p>
                 <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                   Handoffs
                 </p>
@@ -287,32 +322,49 @@ export default function Overview() {
           </button>
         </div>
 
-        <div className="grid md:grid-cols-3">
-          {activity.map(({ icon: Icon, title, description, time }, index) => (
-            <div
-              key={title}
-              className={[
-                "flex gap-3 px-5 py-4",
-                index !== 0 ? "border-t md:border-l md:border-t-0" : "",
-                "border-[var(--border-color)]",
-              ].join(" ")}
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-teal-400">
-                <Icon className="h-4 w-4" />
-              </div>
+                {summaryLoading && (
+          <div className="px-5 py-8 text-center text-sm text-[var(--text-muted)]">Loading recent activity...</div>
+        )}
 
-              <div className="min-w-0">
-                <p className="text-xs font-medium">{title}</p>
-                <p className="mt-1 text-[11px] leading-5 text-[var(--text-secondary)]">
-                  {description}
-                </p>
-                <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
-                  {time}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {summaryError && !summaryLoading && (
+          <div className="px-5 py-8 text-center text-sm text-rose-400">Unable to load recent activity.</div>
+        )}
+
+        {!summaryLoading && !summaryError && !(summary?.recentActivity?.length) && (
+          <div className="px-5 py-8 text-center text-sm text-[var(--text-muted)]">No recent activity yet.</div>
+        )}
+
+        {!summaryLoading && !summaryError && (summary?.recentActivity || []).length > 0 && (
+          <div className="grid md:grid-cols-3">
+            {(summary?.recentActivity || []).map((item, index) => {
+              const Icon = activityIcons[item.eventType] || FileText;
+              return (
+                <div
+                  key={item.id}
+                  className={[
+                    "flex gap-3 px-5 py-4",
+                    index !== 0 ? "border-t md:border-l md:border-t-0" : "",
+                    "border-[var(--border-color)]",
+                  ].join(" ")}
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-teal-400">
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium">{activityTitles[item.eventType] || "Activity"}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--text-secondary)]">
+                      {item.description}
+                    </p>
+                    <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
+                      {timeAgo(item.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
