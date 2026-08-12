@@ -55,6 +55,7 @@ public class TimelineDto {
         private UUID createdById;
         private String createdByName;
         private LocalDateTime createdAt;
+        private CriticalAlertDetail criticalAlert;
 
         public TimelineEventResponse() {}
 
@@ -82,6 +83,9 @@ public class TimelineDto {
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+        public CriticalAlertDetail getCriticalAlert() { return criticalAlert; }
+        public void setCriticalAlert(CriticalAlertDetail criticalAlert) { this.criticalAlert = criticalAlert; }
+
         public static TimelineEventResponseBuilder builder() {
             return new TimelineEventResponseBuilder();
         }
@@ -97,8 +101,86 @@ public class TimelineDto {
             public TimelineEventResponseBuilder createdById(UUID createdById) { response.setCreatedById(createdById); return this; }
             public TimelineEventResponseBuilder createdByName(String createdByName) { response.setCreatedByName(createdByName); return this; }
             public TimelineEventResponseBuilder createdAt(LocalDateTime createdAt) { response.setCreatedAt(createdAt); return this; }
+            public TimelineEventResponseBuilder criticalAlert(CriticalAlertDetail criticalAlert) { response.setCriticalAlert(criticalAlert); return this; }
 
             public TimelineEventResponse build() { return response; }
+        }
+    }
+
+    public static class CriticalAlertDetail {
+        private String vitalType;
+        private String recordedValue;
+        private String threshold;
+        private LocalDateTime timestamp;
+        private UUID recordedById;
+        private String recordedByName;
+        private java.util.List<NotifiedUser> notifiedUsers;
+
+        public CriticalAlertDetail() {}
+
+        public String getVitalType() { return vitalType; }
+        public void setVitalType(String vitalType) { this.vitalType = vitalType; }
+
+        public String getRecordedValue() { return recordedValue; }
+        public void setRecordedValue(String recordedValue) { this.recordedValue = recordedValue; }
+
+        public String getThreshold() { return threshold; }
+        public void setThreshold(String threshold) { this.threshold = threshold; }
+
+        public LocalDateTime getTimestamp() { return timestamp; }
+        public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+        public UUID getRecordedById() { return recordedById; }
+        public void setRecordedById(UUID recordedById) { this.recordedById = recordedById; }
+
+        public String getRecordedByName() { return recordedByName; }
+        public void setRecordedByName(String recordedByName) { this.recordedByName = recordedByName; }
+
+        public java.util.List<NotifiedUser> getNotifiedUsers() { return notifiedUsers; }
+        public void setNotifiedUsers(java.util.List<NotifiedUser> notifiedUsers) { this.notifiedUsers = notifiedUsers; }
+
+        public static CriticalAlertDetailBuilder builder() {
+            return new CriticalAlertDetailBuilder();
+        }
+
+        public static class CriticalAlertDetailBuilder {
+            private final CriticalAlertDetail detail = new CriticalAlertDetail();
+
+            public CriticalAlertDetailBuilder vitalType(String value) { detail.setVitalType(value); return this; }
+            public CriticalAlertDetailBuilder recordedValue(String value) { detail.setRecordedValue(value); return this; }
+            public CriticalAlertDetailBuilder threshold(String value) { detail.setThreshold(value); return this; }
+            public CriticalAlertDetailBuilder timestamp(LocalDateTime value) { detail.setTimestamp(value); return this; }
+            public CriticalAlertDetailBuilder recordedById(UUID value) { detail.setRecordedById(value); return this; }
+            public CriticalAlertDetailBuilder recordedByName(String value) { detail.setRecordedByName(value); return this; }
+            public CriticalAlertDetailBuilder notifiedUsers(java.util.List<NotifiedUser> value) { detail.setNotifiedUsers(value); return this; }
+
+            public CriticalAlertDetail build() { return detail; }
+        }
+    }
+
+    public static class NotifiedUser {
+        private UUID id;
+        private String fullName;
+
+        public NotifiedUser() {}
+
+        public UUID getId() { return id; }
+        public void setId(UUID id) { this.id = id; }
+
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+
+        public static NotifiedUserBuilder builder() {
+            return new NotifiedUserBuilder();
+        }
+
+        public static class NotifiedUserBuilder {
+            private final NotifiedUser user = new NotifiedUser();
+
+            public NotifiedUserBuilder id(UUID value) { user.setId(value); return this; }
+            public NotifiedUserBuilder fullName(String value) { user.setFullName(value); return this; }
+
+            public NotifiedUser build() { return user; }
         }
     }
 }

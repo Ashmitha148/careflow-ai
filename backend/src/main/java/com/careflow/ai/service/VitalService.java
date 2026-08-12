@@ -146,6 +146,26 @@ public class VitalService {
         }
     }
 
+    /**
+     * Human-readable description of the configured critical threshold for a
+     * vital type. Mirrors the rules in {@link #isCritical(Vital)} so the UI can
+     * explain exactly why an alert fired, without changing detection behavior.
+     */
+    public static String describeThreshold(VitalType type) {
+        if (type == null) {
+            return "N/A";
+        }
+        switch (type) {
+            case OXYGEN:
+                return "Oxygen saturation < 90%";
+            case BLOOD_PRESSURE:
+                return "Systolic > 180 mmHg or diastolic > 120 mmHg";
+            case TEMPERATURE:
+                return "Temperature > 39.4 \u00B0C (103 \u00B0F)";
+            default:
+                return "N/A";
+        }
+    }
     private boolean isCriticalTemperature(String value) {
 
         String normalized = value.toUpperCase();

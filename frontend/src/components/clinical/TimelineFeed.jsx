@@ -156,8 +156,45 @@ export default function TimelineFeed({ patientId }) {
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--text-muted)]">
                     <span>{formatDate(event.createdAt)}</span>
                     {event.createdByName && <span>Recorded by {event.createdByName}</span>}
+                    </div>
+
+                    {event.eventType === "CRITICAL_ALERT" && event.criticalAlert && (
+                      <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3">
+                        <p className="text-[11px] font-semibold text-rose-400">
+                          Why was this alert triggered?
+                        </p>
+
+                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] leading-5 text-[var(--text-secondary)]">
+                          <span>
+                            Recorded value:{" "}
+                            <strong className="text-rose-300">
+                              {event.criticalAlert.recordedValue || "N/A"}
+                            </strong>
+                          </span>
+
+                          <span>
+                            Threshold:{" "}
+                            <strong>{event.criticalAlert.threshold || "N/A"}</strong>
+                          </span>
+
+                          <span>
+                            Timestamp: {formatDate(event.criticalAlert.timestamp)}
+                          </span>
+
+                          <span>
+                            Recorded by: {event.criticalAlert.recordedByName || "N/A"}
+                          </span>
+
+                          <span className="col-span-2">
+                            Notified:{" "}
+                            {(event.criticalAlert.notifiedUsers || [])
+                              .map((u) => u.fullName)
+                              .join(", ") || "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
               </div>
             );
           })}
