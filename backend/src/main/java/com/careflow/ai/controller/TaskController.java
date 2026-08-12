@@ -2,6 +2,7 @@ package com.careflow.ai.controller;
 
 import com.careflow.ai.entity.Task;
 import com.careflow.ai.service.TaskService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,7 @@ public class TaskController {
             @RequestParam UUID assignedNurseId,
             @RequestParam String title,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) java.time.LocalDateTime dueAt) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime dueAt) {
         return taskService.createTask(
                 patientId,
                 doctorId,
