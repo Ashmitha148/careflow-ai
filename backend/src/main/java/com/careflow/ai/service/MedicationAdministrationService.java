@@ -13,6 +13,7 @@ import com.careflow.ai.repository.MedicationAdministrationRepository;
 import com.careflow.ai.repository.MedicationRepository;
 import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.repository.PatientAccessRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class MedicationAdministrationService {
     private final MedicationRepository medicationRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final PatientAccessRepository patientAccessRepository;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
 

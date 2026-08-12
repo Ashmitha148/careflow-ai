@@ -115,6 +115,23 @@ public class Patient {
         public PatientBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Patient build() {
+    @Column(name = "remote_supervision_enabled", nullable = false)
+    private boolean remoteSupervisionEnabled;
+
+    @Column(name = "caregiver_physically_present")
+    private boolean caregiverPhysicallyPresent;
+
+    public boolean isRemoteSupervisionEnabled() { return remoteSupervisionEnabled; }
+
+    public void setRemoteSupervisionEnabled(boolean remoteSupervisionEnabled) {
+        this.remoteSupervisionEnabled = remoteSupervisionEnabled;
+    }
+
+    public boolean hasCaregiverPhysicallyPresent() { return caregiverPhysicallyPresent; }
+
+    public void setCaregiverPhysicallyPresent(boolean caregiverPhysicallyPresent) {
+        this.caregiverPhysicallyPresent = caregiverPhysicallyPresent;
+    }
             return new Patient(id, mrn, name, dob, gender, contactInfo, assignedDoctor, assignedNurse, createdAt);
         }
     }
