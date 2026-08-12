@@ -9,21 +9,55 @@ import {
   ArrowRightLeft,
   LogOut,
 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 
 const navigation = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "patients", label: "Patients", icon: Users },
-  { id: "timeline", label: "Timeline", icon: FileClock },
-  { id: "medications", label: "Medications", icon: Pill },
-  { id: "tasks", label: "Tasks", icon: ClipboardList },
-  { id: "handoffs", label: "Shift handoffs", icon: ArrowRightLeft },
+  {
+    id: "overview",
+    label: "Overview",
+    icon: LayoutDashboard,
+    path: "/overview",
+  },
+  { id: "patients", label: "Patients", icon: Users, path: "/patients" },
+  { id: "timeline", label: "Timeline", icon: FileClock, path: "/timeline" },
+  { id: "medications", label: "Medications", icon: Pill, path: "/medications" },
+  { id: "tasks", label: "Tasks", icon: ClipboardList, path: "/tasks" },
+  {
+    id: "handoffs",
+    label: "Shift handoffs",
+    icon: ArrowRightLeft,
+    path: "/handoffs",
+  },
 ];
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab } = useStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { setActiveTab, activeTab } = useStore();
   const { user: currentUser, logout } = useAuth();
+
+  // Determine active tab from current route for visual highlighting
+  const currentPath = location.pathname;
+  const getActiveId = () => {
+    if (currentPath === "/" || currentPath === "/overview") return "overview";
+    if (currentPath.startsWith("/patients")) return "patients";
+    if (currentPath.startsWith("/timeline")) return "timeline";
+    if (currentPath.startsWith("/medications")) return "medications";
+    if (currentPath.startsWith("/tasks")) return "tasks";
+    if (currentPath.startsWith("/handoffs")) return "handoffs";
+    if (currentPath.startsWith("/copilot")) return "copilot";
+    if (currentPath.startsWith("/audit")) return "audit";
+    return activeTab;
+  };
+
+  const activeId = getActiveId();
+
+  const handleNavClick = (id, path) => {
+    setActiveTab(id);
+    navigate(path);
+  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] lg:flex lg:flex-col">
@@ -50,14 +84,14 @@ export default function Sidebar() {
         </p>
 
         <nav className="space-y-1">
-          {navigation.map(({ id, label, icon: Icon }) => {
-            const active = activeTab === id;
+          {navigation.map(({ id, label, icon: Icon, path }) => {
+            const active = activeId === id;
 
             return (
               <button
                 key={id}
                 type="button"
-                onClick={() => setActiveTab(id)}
+                onClick={() => handleNavClick(id, path)}
                 className={[
                   "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200",
                   active
@@ -93,10 +127,13 @@ export default function Sidebar() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("copilot")}
+          onClick={() => {
+            setActiveTab("copilot");
+            // Copilot opens as side panel, no route change needed
+          }}
           className={[
             "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200",
-            activeTab === "copilot"
+            activeId === "copilot"
               ? "bg-teal-500/10 text-teal-400"
               : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
           ].join(" ")}
@@ -111,10 +148,10 @@ export default function Sidebar() {
         {currentUser?.role === "ADMIN" && (
           <button
             type="button"
-            onClick={() => setActiveTab("audit")}
+            onClick={() => handleNavClick("audit", "/audit")}
             className={[
               "mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200",
-              activeTab === "audit"
+              activeId === "audit"
                 ? "bg-teal-500/10 text-teal-400"
                 : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
             ].join(" ")}
