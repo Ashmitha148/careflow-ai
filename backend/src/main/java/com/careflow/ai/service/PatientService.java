@@ -4,16 +4,25 @@ import com.careflow.ai.dto.PatientDto.PatientResponse;
 import com.careflow.ai.dto.PatientDto.RegisterRequest;
 import com.careflow.ai.dto.PatientDto.UpdateRequest;
 import com.careflow.ai.entity.Patient;
+import com.careflow.ai.entity.PatientAccess;
+import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.User;
+import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -23,13 +32,16 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final PatientAccessRepository patientAccessRepository;
     private final AuditLogService auditLogService;
 
     public PatientService(PatientRepository patientRepository,
                           UserRepository userRepository,
+                          PatientAccessRepository patientAccessRepository,
                           AuditLogService auditLogService) {
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.patientAccessRepository = patientAccessRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -99,13 +111,74 @@ public class PatientService {
     public PatientResponse getById(UUID patientId) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+        User actor = resolveCurrentUser();
+        ensureAccess(actor, patient);
         return toResponse(patient);
     }
 
     @Transactional(readOnly = true)
     public Page<PatientResponse> search(String query, Pageable pageable) {
         String normalized = query == null ? "" : query.trim();
-        return patientRepository.searchByNameOrMrn(normalized, pageable).map(this::toResponse);
+        User actor = resolveCurrentUser();
+
+        // Admins may search all patients.
+        if (actor.getRole() == Role.ADMIN) {
+            return patientRepository.searchByNameOrMrn(normalized, pageable).map(this::toResponse);
+        }
+
+        Set<UUID> accessibleIds = resolveAccessiblePatientIds(actor);
+        if (accessibleIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return patientRepository
+                .searchAccessibleByNameOrMrn(accessibleIds, normalized, pageable)
+                .map(this::toResponse);
+    }
+
+    /**
+     * Returns the set of patient ids the given (non-admin) user may access: those
+     * they are assigned to as doctor/nurse, plus any explicit patient_access rows.
+     */
+    private Set<UUID> resolveAccessiblePatientIds(User actor) {
+        Set<UUID> ids = new HashSet<>(patientRepository.findAccessibleIdsByAssignment(actor.getId()));
+        List<PatientAccess> accesses = patientAccessRepository.findByUser_Id(actor.getId());
+        for (PatientAccess access : accesses) {
+            if (access != null && access.getId() != null) {
+                ids.add(access.getId().getPatientId());
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Throws if the given actor cannot read this patient. Access is granted for
+     * ADMIN, the assigned doctor/nurse, or an explicit patient_access row.
+     */
+    private void ensureAccess(User actor, Patient patient) {
+        if (actor.getRole() == Role.ADMIN) {
+            return;
+        }
+        UUID actorId = actor.getId();
+        User doctor = patient.getAssignedDoctor();
+        if (doctor != null && actorId.equals(doctor.getId())) {
+            return;
+        }
+        User nurse = patient.getAssignedNurse();
+        if (nurse != null && actorId.equals(nurse.getId())) {
+            return;
+        }
+        if (patientAccessRepository.existsByPatient_IdAndUser_Id(patient.getId(), actorId)) {
+            return;
+        }
+        throw new RuntimeException("Access denied to patient: " + patient.getId());
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 
     private String generateMrn() {

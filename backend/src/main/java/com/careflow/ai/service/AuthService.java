@@ -1,6 +1,7 @@
 package com.careflow.ai.service;
 
 import com.careflow.ai.dto.AuthDto.*;
+import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.security.JwtTokenProvider;
@@ -56,11 +57,19 @@ public class AuthService {
             throw new RuntimeException("Email address already in use");
         }
 
+        // Public self-registration must never grant privileged roles. Only
+        // CAREGIVER and READ_ONLY are permitted; privileged roles must be
+        // provisioned by an admin/seeded path instead.
+        Role requestedRole = request.getRole() != null ? request.getRole() : Role.READ_ONLY;
+        if (requestedRole != Role.CAREGIVER && requestedRole != Role.READ_ONLY) {
+            throw new RuntimeException("Role not permitted for self-registration: " + requestedRole);
+        }
+
         User user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(request.getRole())
+                .role(requestedRole)
                 .build();
 
         user = userRepository.save(user);

@@ -2,14 +2,14 @@
 
 -- ============================================================================
 -- 1. SEED USERS (5 Users: 2 Doctors, 2 Nurses, 1 Caregiver)
--- BCrypt Hash for 'password123': $2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5
+-- BCrypt Hash for 'password123': $2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm
 -- ============================================================================
 INSERT INTO users (id, email, password_hash, full_name, role, created_at) VALUES
-('11111111-1111-1111-1111-111111111111', 'sarah.jenkins@careflow.ai', '$2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5', 'Dr. Sarah Jenkins', 'DOCTOR', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
-('22222222-2222-2222-2222-222222222222', 'michael.chen@careflow.ai', '$2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5', 'Dr. Michael Chen', 'DOCTOR', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
-('33333333-3333-3333-3333-333333333333', 'emily.watson@careflow.ai', '$2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5', 'Nurse Emily Watson', 'NURSE', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
-('44444444-4444-4444-4444-444444444444', 'james.rivera@careflow.ai', '$2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5', 'Nurse James Rivera', 'NURSE', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
-('55555555-5555-5555-5555-555555555555', 'maria.rodriguez@careflow.ai', '$2a$10$76g/h2.P34W1f7h.W7xS.uY1a2b3c4d5e6f7g8h9i0j1k2l3m4n5', 'Maria Rodriguez', 'CAREGIVER', CURRENT_TIMESTAMP - INTERVAL '30' DAY);
+('11111111-1111-1111-1111-111111111111', 'sarah.jenkins@careflow.ai', '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm', 'Dr. Sarah Jenkins', 'DOCTOR', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
+('22222222-2222-2222-2222-222222222222', 'michael.chen@careflow.ai', '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm', 'Dr. Michael Chen', 'DOCTOR', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
+('33333333-3333-3333-3333-333333333333', 'emily.watson@careflow.ai', '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm', 'Nurse Emily Watson', 'NURSE', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
+('44444444-4444-4444-4444-444444444444', 'james.rivera@careflow.ai', '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm', 'Nurse James Rivera', 'NURSE', CURRENT_TIMESTAMP - INTERVAL '30' DAY),
+('55555555-5555-5555-5555-555555555555', 'maria.rodriguez@careflow.ai', '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm', 'Maria Rodriguez', 'CAREGIVER', CURRENT_TIMESTAMP - INTERVAL '30' DAY);
 
 -- ============================================================================
 -- 2. SEED PATIENTS (4 Patients)

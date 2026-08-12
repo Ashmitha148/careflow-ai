@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +29,18 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
                OR LOWER(p.mrn) LIKE LOWER(CONCAT('%', :query, '%')))
             """)
     Page<Patient> searchByNameOrMrn(@Param("query") String query, Pageable pageable);
+
+    @Query("SELECT p.id FROM Patient p WHERE p.assignedDoctor.id = :userId OR p.assignedNurse.id = :userId")
+    List<UUID> findAccessibleIdsByAssignment(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT p FROM Patient p
+            WHERE p.id IN :patientIds
+              AND (:query IS NULL OR :query = ''
+                 OR LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                 OR LOWER(p.mrn) LIKE LOWER(CONCAT('%', :query, '%')))
+            """)
+    Page<Patient> searchAccessibleByNameOrMrn(@Param("patientIds") Collection<UUID> patientIds,
+                                              @Param("query") String query,
+                                              Pageable pageable);
 }
