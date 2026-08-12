@@ -39,9 +39,18 @@ public class Patient {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "remote_supervision_enabled", nullable = false)
+    private boolean remoteSupervisionEnabled = false;
+
+    @Column(name = "caregiver_physically_present")
+    private boolean caregiverPhysicallyPresent = false;
+
     public Patient() {}
 
-    public Patient(UUID id, String mrn, String name, LocalDate dob, String gender, String contactInfo, User assignedDoctor, User assignedNurse, LocalDateTime createdAt) {
+    public Patient(UUID id, String mrn, String name, LocalDate dob, String gender, 
+                   String contactInfo, User assignedDoctor, User assignedNurse, 
+                   LocalDateTime createdAt, boolean remoteSupervisionEnabled,
+                   boolean caregiverPhysicallyPresent) {
         this.id = id;
         this.mrn = mrn;
         this.name = name;
@@ -51,6 +60,8 @@ public class Patient {
         this.assignedDoctor = assignedDoctor;
         this.assignedNurse = assignedNurse;
         this.createdAt = createdAt;
+        this.remoteSupervisionEnabled = remoteSupervisionEnabled;
+        this.caregiverPhysicallyPresent = caregiverPhysicallyPresent;
     }
 
     public UUID getId() { return id; }
@@ -80,6 +91,16 @@ public class Patient {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    public boolean isRemoteSupervisionEnabled() { return remoteSupervisionEnabled; }
+    public void setRemoteSupervisionEnabled(boolean remoteSupervisionEnabled) {
+        this.remoteSupervisionEnabled = remoteSupervisionEnabled;
+    }
+
+    public boolean hasCaregiverPhysicallyPresent() { return caregiverPhysicallyPresent; }
+    public void setCaregiverPhysicallyPresent(boolean caregiverPhysicallyPresent) {
+        this.caregiverPhysicallyPresent = caregiverPhysicallyPresent;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -101,6 +122,8 @@ public class Patient {
         private User assignedDoctor;
         private User assignedNurse;
         private LocalDateTime createdAt;
+        private boolean remoteSupervisionEnabled;
+        private boolean caregiverPhysicallyPresent;
 
         PatientBuilder() {}
 
@@ -113,26 +136,17 @@ public class Patient {
         public PatientBuilder assignedDoctor(User assignedDoctor) { this.assignedDoctor = assignedDoctor; return this; }
         public PatientBuilder assignedNurse(User assignedNurse) { this.assignedNurse = assignedNurse; return this; }
         public PatientBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public PatientBuilder remoteSupervisionEnabled(boolean remoteSupervisionEnabled) { 
+            this.remoteSupervisionEnabled = remoteSupervisionEnabled; return this; 
+        }
+        public PatientBuilder caregiverPhysicallyPresent(boolean caregiverPhysicallyPresent) { 
+            this.caregiverPhysicallyPresent = caregiverPhysicallyPresent; return this; 
+        }
 
         public Patient build() {
-    @Column(name = "remote_supervision_enabled", nullable = false)
-    private boolean remoteSupervisionEnabled;
-
-    @Column(name = "caregiver_physically_present")
-    private boolean caregiverPhysicallyPresent;
-
-    public boolean isRemoteSupervisionEnabled() { return remoteSupervisionEnabled; }
-
-    public void setRemoteSupervisionEnabled(boolean remoteSupervisionEnabled) {
-        this.remoteSupervisionEnabled = remoteSupervisionEnabled;
-    }
-
-    public boolean hasCaregiverPhysicallyPresent() { return caregiverPhysicallyPresent; }
-
-    public void setCaregiverPhysicallyPresent(boolean caregiverPhysicallyPresent) {
-        this.caregiverPhysicallyPresent = caregiverPhysicallyPresent;
-    }
-            return new Patient(id, mrn, name, dob, gender, contactInfo, assignedDoctor, assignedNurse, createdAt);
+            return new Patient(id, mrn, name, dob, gender, contactInfo, 
+                assignedDoctor, assignedNurse, createdAt, 
+                remoteSupervisionEnabled, caregiverPhysicallyPresent);
         }
     }
 }

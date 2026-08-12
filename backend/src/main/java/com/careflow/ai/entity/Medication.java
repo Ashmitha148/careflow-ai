@@ -39,11 +39,14 @@ public class Medication {
     @Column(name = "status", nullable = false)
     private MedStatus status = MedStatus.ACTIVE;
 
+    @Column(name = "important", nullable = false)
+    private boolean important = false;
+
     public Medication() {}
 
     public Medication(UUID id, Patient patient, User prescribedBy, String name,
                        String dosage, String frequency, LocalDate startDate,
-                       LocalDate endDate, MedStatus status) {
+                       LocalDate endDate, MedStatus status, boolean important) {
         this.id = id;
         this.patient = patient;
         this.prescribedBy = prescribedBy;
@@ -53,6 +56,7 @@ public class Medication {
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = status;
+        this.important = important;
     }
 
     public UUID getId() { return id; }
@@ -81,4 +85,7 @@ public class Medication {
 
     public MedStatus getStatus() { return status; }
     public void setStatus(MedStatus status) { this.status = status; }
+
+    public boolean isImportant() { return important; }
+    public void setImportant(boolean important) { this.important = important; }
 }

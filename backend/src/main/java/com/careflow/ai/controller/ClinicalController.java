@@ -67,7 +67,8 @@ public class ClinicalController {
             @RequestParam String dosage,
             @RequestParam String frequency,
             @RequestParam java.time.LocalDate startDate,
-            @RequestParam(required = false) java.time.LocalDate endDate) {
+            @RequestParam(required = false) java.time.LocalDate endDate,
+            @RequestParam(required = false, defaultValue = "false") boolean important) {
         return medicationService.prescribeMedication(
                 patientId,
                 doctorUserId,
@@ -75,7 +76,8 @@ public class ClinicalController {
                 dosage,
                 frequency,
                 startDate,
-                endDate);
+                endDate,
+                important);
     }
 
     @GetMapping("/medications/{patientId}")
@@ -113,6 +115,41 @@ public class ClinicalController {
                 nurseId,
                 status,
                 notes);
+    }
+
+    /**
+     * Phase 5B: Record medication administration with video verification.
+     * Required when patient has remote supervision enabled, no caregiver present,
+     * and medication is marked as important.
+     */
+    @PostMapping(
+            value = "/medications/{medicationId}/administrations/verify",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('NURSE','DOCTOR','ADMIN')")
+    public MedicationAdministration recordAdministrationWithVideo(
+            @PathVariable UUID medicationId,
+            @RequestParam UUID userId,
+            @RequestParam com.careflow.ai.entity.AdminStatus status,
+            @RequestParam(required = false) String notes,
+            @RequestPart(value = "video", required = false) MultipartFile video) {
+        return medicationAdministrationService.recordAdministrationWithVideoVerification(
+                medicationId,
+                userId,
+                status,
+                notes,
+                video);
+    }
+
+    /**
+     * Phase 5B: Check if a medication administration requires video verification.
+     */
+    @GetMapping("/medications/{medicationId}/verification-required")
+    @PreAuthorize("isAuthenticated()")
+    public boolean isVerificationRequired(
+            @PathVariable UUID medicationId) {
+        Medication medication = medicationService.getMedication(medicationId);
+        return medicationAdministrationService.isRemoteVerificationRequired(
+                medication.getPatient(), medication);
     }
 
     @GetMapping("/medications/{medicationId}/administrations")
@@ -193,4 +230,3 @@ public class ClinicalController {
                 deletedByUserId);
     }
 }
-

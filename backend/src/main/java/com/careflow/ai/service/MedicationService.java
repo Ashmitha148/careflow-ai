@@ -46,6 +46,23 @@ public class MedicationService {
             String frequency,
             LocalDate startDate,
             LocalDate endDate) {
+        return prescribeMedication(patientId, doctorId, name, dosage, frequency,
+                startDate, endDate, false);
+    }
+
+    /**
+     * Phase 5B: Overloaded method with 'important' flag for remote verification.
+     */
+    @Transactional
+    public Medication prescribeMedication(
+            UUID patientId,
+            UUID doctorId,
+            String name,
+            String dosage,
+            String frequency,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean important) {
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
@@ -62,6 +79,7 @@ public class MedicationService {
         medication.setStartDate(startDate);
         medication.setEndDate(endDate);
         medication.setStatus(MedStatus.ACTIVE);
+        medication.setImportant(important);
 
         Medication saved = medicationRepository.save(medication);
 
@@ -70,7 +88,8 @@ public class MedicationService {
                 + " "
                 + saved.getDosage()
                 + ", frequency: "
-                + saved.getFrequency();
+                + saved.getFrequency()
+                + (important ? " [IMPORTANT - requires remote verification]" : "");
 
         timelineService.appendEvent(
                 patientId,

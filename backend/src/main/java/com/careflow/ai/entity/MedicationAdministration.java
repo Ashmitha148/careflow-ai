@@ -30,19 +30,25 @@ public class MedicationAdministration {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "video_attachment_id")
+    private FileAttachment verificationVideo;
+
     public MedicationAdministration() {}
 
     public MedicationAdministration(UUID id, Medication medication,
                                     User administeredBy,
                                     LocalDateTime administeredAt,
                                     AdminStatus status,
-                                    String notes) {
+                                    String notes,
+                                    FileAttachment verificationVideo) {
         this.id = id;
         this.medication = medication;
         this.administeredBy = administeredBy;
         this.administeredAt = administeredAt;
         this.status = status;
         this.notes = notes;
+        this.verificationVideo = verificationVideo;
     }
 
     public UUID getId() { return id; }
@@ -62,6 +68,9 @@ public class MedicationAdministration {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public FileAttachment getVerificationVideo() { return verificationVideo; }
+    public void setVerificationVideo(FileAttachment verificationVideo) { this.verificationVideo = verificationVideo; }
 
     @PrePersist
     protected void onCreate() {
