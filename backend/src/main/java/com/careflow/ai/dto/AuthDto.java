@@ -87,39 +87,69 @@ public class AuthDto {
     }
 
     public static class AuthResponse {
-        private String token;
-        private UserResponse user;
+    private String token;
+    private String refreshToken;
+    private UserResponse user;
 
-        public AuthResponse() {}
+    public AuthResponse() {}
 
-        public AuthResponse(String token, UserResponse user) {
-            this.token = token;
-            this.user = user;
-        }
-
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-
-        public UserResponse getUser() { return user; }
-        public void setUser(UserResponse user) { this.user = user; }
-
-        public static AuthResponseBuilder builder() {
-            return new AuthResponseBuilder();
-        }
-
-        public static class AuthResponseBuilder {
-            private String token;
-            private UserResponse user;
-
-            public AuthResponseBuilder token(String token) { this.token = token; return this; }
-            public AuthResponseBuilder user(UserResponse user) { this.user = user; return this; }
-
-            public AuthResponse build() {
-                return new AuthResponse(token, user);
-            }
-        }
+    public AuthResponse(String token, String refreshToken, UserResponse user) {
+        this.token = token;
+        this.refreshToken = refreshToken;
+        this.user = user;
     }
 
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+
+    public UserResponse getUser() { return user; }
+    public void setUser(UserResponse user) { this.user = user; }
+
+    public static AuthResponseBuilder builder() {
+        return new AuthResponseBuilder();
+    }
+
+    public static class AuthResponseBuilder {
+        private String token;
+        private String refreshToken;
+        private UserResponse user;
+
+        public AuthResponseBuilder token(String token) {
+            this.token = token;
+            return this;
+        }
+
+        public AuthResponseBuilder refreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+            return this;
+        }
+
+        public AuthResponseBuilder user(UserResponse user) {
+            this.user = user;
+            return this;
+        }
+
+        public AuthResponse build() {
+            return new AuthResponse(token, refreshToken, user);
+        }
+    }
+}
+        public static class RefreshRequest {
+    @NotBlank(message = "Refresh token is required")
+    private String refreshToken;
+
+    public RefreshRequest() {}
+
+    public RefreshRequest(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+}
     public static class UserResponse {
         private UUID id;
         private String email;

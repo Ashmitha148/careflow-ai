@@ -16,7 +16,8 @@ spring:
 careflow:
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
   gemini:
     api-key: ${GEMINI_API_KEY:placeholder-gemini-api-key}
     model: ${GEMINI_MODEL:gemini-1.5-flash}

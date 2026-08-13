@@ -103,3 +103,61 @@ INSERT INTO vitals (id, patient_id, recorded_by, "type", "value", recorded_at) V
 ('c8888888-8888-8888-8888-888888888888', 'a3333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 'PEAK_FLOW', '350 L/min', CURRENT_TIMESTAMP - INTERVAL '2' HOUR),
 ('c9999999-9999-9999-9999-999999999999', 'a4444444-4444-4444-4444-444444444444', '44444444-4444-4444-4444-444444444444', 'BLOOD_PRESSURE', '132/84', CURRENT_TIMESTAMP - INTERVAL '1' HOUR),
 ('c0000000-0000-0000-0000-000000000001', 'a4444444-4444-4444-4444-444444444444', '44444444-4444-4444-4444-444444444444', 'RESPIRATORY_RATE', '22/min', CURRENT_TIMESTAMP - INTERVAL '1' HOUR);
+
+-- ============================================================================
+-- 12. ROLE-BASED DEMO ACCOUNT EMAILS
+-- ============================================================================
+
+-- Existing seeded users from V2
+UPDATE users
+SET email = 'doctor1@careflow.ai',
+    full_name = 'Dr. Sarah Jenkins'
+WHERE id = '11111111-1111-1111-1111-111111111111';
+
+UPDATE users
+SET email = 'doctor2@careflow.ai',
+    full_name = 'Dr. Michael Chen'
+WHERE id = '22222222-2222-2222-2222-222222222222';
+
+UPDATE users
+SET email = 'nurse1@careflow.ai',
+    full_name = 'Nurse Emily Watson'
+WHERE id = '33333333-3333-3333-3333-333333333333';
+
+UPDATE users
+SET email = 'nurse2@careflow.ai',
+    full_name = 'Nurse James Rivera'
+WHERE id = '44444444-4444-4444-4444-444444444444';
+
+UPDATE users
+SET email = 'caregiver@careflow.ai',
+    full_name = 'Maria Rodriguez'
+WHERE id = '55555555-5555-5555-5555-555555555555';
+
+-- Existing Eleanor patient account
+UPDATE users
+SET email = 'patient@careflow.ai',
+    full_name = 'Eleanor Vance'
+WHERE id = '66666666-6666-6666-6666-666666666666';
+
+-- New admin account
+INSERT INTO users
+(id, email, password_hash, full_name, role, created_at)
+VALUES
+('77777777-7777-7777-7777-777777777777',
+ 'admin@careflow.ai',
+ '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm',
+ 'System Administrator',
+ 'ADMIN',
+ CURRENT_TIMESTAMP);
+
+-- New read-only account
+INSERT INTO users
+(id, email, password_hash, full_name, role, created_at)
+VALUES
+('88888888-8888-8888-8888-888888888888',
+ 'readonly@careflow.ai',
+ '$2b$12$nNtMHIypAkcXRxdjGq0RHO8wWy1Wh29ACxUyIKJdSu1l39grwK4jm',
+ 'Dr. Reviewer Smith',
+ 'READ_ONLY',
+ CURRENT_TIMESTAMP);

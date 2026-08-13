@@ -4,11 +4,13 @@ import com.careflow.ai.dto.AuthDto.*;
 import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetailsService;
 import com.careflow.ai.security.JwtTokenProvider;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +22,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final CustomUserDetailsService userDetailsService;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtTokenProvider tokenProvider) {
+                       JwtTokenProvider tokenProvider,
+                       CustomUserDetailsService userDetailsService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.userDetailsService = userDetailsService;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -41,12 +46,14 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = tokenProvider.generateToken(authentication);
+        String refreshToken = tokenProvider.generateRefreshToken(authentication);
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found after authentication"));
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .user(mapToUserResponse(user))
                 .build();
     }
@@ -84,9 +91,42 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = tokenProvider.generateToken(authentication);
+        String refreshToken = tokenProvider.generateRefreshToken(authentication);
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
+                .user(mapToUserResponse(user))
+                .build();
+    }
+
+    /**
+     * Exchanges a valid, non-expired refresh token for a new access/refresh
+     * pair. The refresh token itself is a JWT with a "type": "refresh" claim
+     * that JwtTokenProvider rejects if presented as an access token, so a
+     * leaked refresh token can only ever be used against this one endpoint.
+     */
+    public AuthResponse refresh(RefreshRequest request) {
+        String suppliedRefreshToken = request.getRefreshToken();
+
+        if (!tokenProvider.validateRefreshToken(suppliedRefreshToken)) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+
+        String email = tokenProvider.getUsernameFromToken(suppliedRefreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found for refresh token"));
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+
+        String newAccessToken = tokenProvider.generateToken(authentication);
+        String newRefreshToken = tokenProvider.generateRefreshToken(authentication);
+
+        return AuthResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .user(mapToUserResponse(user))
                 .build();
     }

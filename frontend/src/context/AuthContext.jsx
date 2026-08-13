@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { login as loginRequest, logout as logoutRequest, getCurrentUser } from "../services/auth";
+import {
+  login as loginRequest,
+  register as registerRequest,
+  logout as logoutRequest,
+  getCurrentUser,
+} from "../services/auth";
 
 export const AuthContext = createContext(null);
 
@@ -17,6 +22,7 @@ export function AuthProvider({ children }) {
       .then((me) => setUser(me))
       .catch(() => {
         localStorage.removeItem("careflow_token");
+        localStorage.removeItem("careflow_refresh_token");
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -28,13 +34,33 @@ export function AuthProvider({ children }) {
     return loggedInUser;
   }
 
+  async function register(email, password, fullName, role) {
+    const registeredUser = await registerRequest(
+      email,
+      password,
+      fullName,
+      role,
+    );
+    setUser(registeredUser);
+    return registeredUser;
+  }
+
   function logout() {
     logoutRequest();
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

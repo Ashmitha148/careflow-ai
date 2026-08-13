@@ -1,29 +1,30 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Activity } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-export default function Login() {
-  const { login } = useAuth();
+export default function Register() {
+  const { register } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("CAREGIVER");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const from = location.state?.from?.pathname || "/";
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
+
     try {
-      await login(email, password);
-      navigate(from, { replace: true });
+      await register(email, password, fullName, role);
+      navigate("/", { replace: true });
     } catch (err) {
       setError(
-        err?.response?.data?.message || "Invalid email or password. Please try again."
+        err?.response?.data?.message ||
+          "Could not create your account. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -37,12 +38,13 @@ export default function Login() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20">
             <Activity className="h-6 w-6" strokeWidth={2.2} />
           </div>
+
           <div className="text-center">
             <p className="text-lg font-semibold text-[var(--text-primary)]">
               CareFlow AI
             </p>
             <p className="text-xs text-[var(--text-muted)]">
-              Sign in to continue
+              Create a caregiver or read-only account
             </p>
           </div>
         </div>
@@ -56,6 +58,20 @@ export default function Login() {
               {error}
             </div>
           )}
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+              Full name
+            </label>
+            <input
+              type="text"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Doe"
+              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/10"
+            />
+          </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
@@ -78,6 +94,7 @@ export default function Login() {
             <input
               type="password"
               required
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
@@ -85,17 +102,38 @@ export default function Login() {
             />
           </div>
 
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+              I am a
+            </label>
+
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/10"
+            >
+              <option value="CAREGIVER">Family caregiver</option>
+              <option value="READ_ONLY">Read-only viewer</option>
+            </select>
+
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+              Clinical roles (Doctor, Nurse, Admin) are provisioned by an
+              administrator, not through self-registration.
+            </p>
+          </div>
+
           <button
             type="submit"
             disabled={submitting}
             className="w-full rounded-lg bg-teal-500 py-2 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? "Creating account..." : "Create account"}
           </button>
+
           <p className="text-center text-xs text-[var(--text-muted)]">
-            Need an account?{" "}
-            <Link to="/register" className="text-teal-400 hover:text-teal-300">
-              Create one
+            Already have an account?{" "}
+            <Link to="/login" className="text-teal-400 hover:text-teal-300">
+              Sign in
             </Link>
           </p>
         </form>

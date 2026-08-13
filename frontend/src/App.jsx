@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import RoleDashboard from "./pages/RoleDashboard";
 import Overview from "./pages/Overview";
 import PatientList from "./pages/PatientList";
@@ -22,6 +23,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             {/* Role-based default landing */}
