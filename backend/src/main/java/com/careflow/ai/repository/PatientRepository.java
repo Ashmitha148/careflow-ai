@@ -22,6 +22,10 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     long countByMrnStartingWith(String mrnPrefix);
 
+    List<Patient> findByAssignedNurse_Id(UUID assignedNurseId);
+
+    List<Patient> findByAssignedDoctor_Id(UUID assignedDoctorId);
+
     @Query("""
             SELECT p FROM Patient p
             WHERE (:query IS NULL OR :query = ''

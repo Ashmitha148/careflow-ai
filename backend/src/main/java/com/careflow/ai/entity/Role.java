@@ -1,9 +1,10 @@
 package com.careflow.ai.entity;
 
 public enum Role {
+    ADMIN,
     DOCTOR,
     NURSE,
     CAREGIVER,
-    ADMIN,
-    READ_ONLY
+    READ_ONLY,
+    PATIENT
 }

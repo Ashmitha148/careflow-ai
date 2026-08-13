@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Pill, Search } from "lucide-react";
-import { usePatients } from "../services/patientHooks";
-import { usePatientMedications } from "../services/clinicalHooks";
+import { useState, useEffect } from "react";
+import { Pill, Search, AlertTriangle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+
+const API_BASE = "/api";
 
 function MedicationCard({ medication }) {
   return (
@@ -27,8 +28,9 @@ function MedicationCard({ medication }) {
         </span>
       </div>
       {medication.important && (
-        <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400">
-          ⚠ Important — requires remote verification
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
+          <AlertTriangle className="h-3 w-3 text-amber-400" />
+          <span className="text-[11px] text-amber-400">Important — requires remote verification</span>
         </div>
       )}
     </div>
@@ -36,14 +38,46 @@ function MedicationCard({ medication }) {
 }
 
 export default function MedicationsPage() {
-  const {
-    patients,
-    loading: patientsLoading,
-    error: patientsError,
-  } = usePatients();
+  const { user } = useAuth();
+  const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
-  const { medications, loading: medsLoading } =
-    usePatientMedications(selectedPatientId);
+  const [medications, setMedications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("careflow_token");
+    fetch(`${API_BASE}/patients/my`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setPatients(data || []);
+        if (data?.length === 1) {
+          setSelectedPatientId(data[0].id);
+          return fetch(`${API_BASE}/clinical/medications/${data[0].id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+        return null;
+      })
+      .then((r) => r?.json())
+      .then((data) => {
+        if (data) setMedications(data || []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPatientId) return;
+    const token = localStorage.getItem("careflow_token");
+    setLoading(true);
+    fetch(`${API_BASE}/clinical/medications/${selectedPatientId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => setMedications(data || []))
+      .finally(() => setLoading(false));
+  }, [selectedPatientId]);
 
   return (
     <div className="space-y-6 pb-10">
@@ -55,69 +89,42 @@ export default function MedicationsPage() {
         </p>
       </div>
 
-      <div className="surface rounded-2xl p-4">
-        <div className="flex items-center gap-2">
-          <Search className="h-4 w-4 text-[var(--text-muted)]" />
-          <select
-            value={selectedPatientId}
-            onChange={(e) => setSelectedPatientId(e.target.value)}
-            className="h-10 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-teal-500/50"
-          >
-            <option value="">Select a patient</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} — {p.mrn}
-              </option>
-            ))}
-          </select>
+      {patients.length > 1 && (
+        <div className="surface rounded-2xl p-4">
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-[var(--text-muted)]" />
+            <select
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(e.target.value)}
+              className="h-10 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-teal-500/50"
+            >
+              <option value="">Select a patient</option>
+              {patients.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.mrn}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
-      {patientsLoading && (
+      {loading && (
         <div className="surface rounded-2xl p-8 text-center text-sm text-[var(--text-muted)]">
-          Loading patients...
+          Loading medications...
         </div>
       )}
 
-      {patientsError && (
-        <div className="surface rounded-2xl p-8 text-center text-sm text-rose-400">
-          Unable to load patients.
-        </div>
-      )}
-
-      {!patientsLoading &&
-        !patientsError &&
-        selectedPatientId &&
-        medsLoading && (
-          <div className="surface rounded-2xl p-8 text-center text-sm text-[var(--text-muted)]">
-            Loading medications...
-          </div>
-        )}
-
-      {!patientsLoading &&
-        !patientsError &&
-        selectedPatientId &&
-        !medsLoading && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {medications.length === 0 ? (
-              <div className="surface rounded-2xl p-8 text-center sm:col-span-2">
-                <Pill className="mx-auto h-8 w-8 text-[var(--text-muted)]" />
-                <p className="mt-3 text-sm font-medium">No medications found</p>
-              </div>
-            ) : (
-              medications.map((med) => (
-                <MedicationCard key={med.id} medication={med} />
-              ))
-            )}
-          </div>
-        )}
-
-      {!patientsLoading && !patientsError && !selectedPatientId && (
-        <div className="surface rounded-2xl p-8 text-center">
-          <Pill className="mx-auto h-8 w-8 text-[var(--text-muted)]" />
-          <p className="mt-3 text-sm font-medium">
-            Select a patient to view medications
-          </p>
+      {!loading && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {medications.length === 0 ? (
+            <div className="surface rounded-2xl p-8 text-center sm:col-span-2">
+              <Pill className="mx-auto h-8 w-8 text-[var(--text-muted)]" />
+              <p className="mt-3 text-sm font-medium">No medications found</p>
+            </div>
+          ) : (
+            medications.map((med) => <MedicationCard key={med.id} medication={med} />)
+          )}
         </div>
       )}
     </div>

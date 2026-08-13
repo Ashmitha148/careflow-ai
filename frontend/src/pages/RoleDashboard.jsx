@@ -1,29 +1,36 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Overview from "./Overview";
-import NurseDashboard from "./dashboards/NurseDashboard";
-import FamilyDashboard from "./dashboards/FamilyDashboard";
-import AuditPanel from "./dashboards/AuditPanel";
 
 export default function RoleDashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-  if (user?.role === "NURSE") {
-    return <NurseDashboard />;
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      switch (user.role) {
+        case "PATIENT":
+          navigate("/my-care", { replace: true });
+          break;
+        case "CAREGIVER":
+        case "READ_ONLY":
+          navigate("/family", { replace: true });
+          break;
+        case "NURSE":
+          navigate("/nurse-dashboard", { replace: true });
+          break;
+        case "ADMIN":
+          navigate("/audit", { replace: true });
+          break;
+        default:
+          navigate("/overview", { replace: true });
+      }
+    }
+  }, [user, loading, navigate]);
 
-  if (user?.role === "CAREGIVER" || user?.role === "READ_ONLY") {
-    return <FamilyDashboard />;
-  }
-
-  if (user?.role === "ADMIN") {
-    return (
-      <div className="space-y-6 pb-10">
-        <Overview />
-        <AuditPanel />
-      </div>
-    );
-  }
-
-  // DOCTOR and any unrecognized role fall back to the general overview.
-  return <Overview />;
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="animate-spin h-8 w-8 border-2 border-teal-500 border-t-transparent rounded-full" />
+    </div>
+  );
 }
