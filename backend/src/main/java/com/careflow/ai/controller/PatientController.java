@@ -38,6 +38,12 @@ public class PatientController {
         return patientService.update(patientId, request, actorUserId);
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public java.util.List<PatientResponse> getMyPatients() {
+        return patientService.getMyPatients();
+    }
+
     @GetMapping("/{patientId}")
     @PreAuthorize("isAuthenticated()")
     public PatientResponse getById(

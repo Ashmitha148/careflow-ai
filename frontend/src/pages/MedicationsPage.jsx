@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Pill, Search, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = "/api";
+import { getMyPatients } from "../services/patientApi";
+import { getPatientMedications } from "../services/clinicalApi";
 
 function MedicationCard({ medication }) {
   return (
@@ -45,37 +45,28 @@ export default function MedicationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("careflow_token");
-    fetch(`${API_BASE}/patients/my`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    getMyPatients()
       .then((data) => {
         setPatients(data || []);
         if (data?.length === 1) {
           setSelectedPatientId(data[0].id);
-          return fetch(`${API_BASE}/clinical/medications/${data[0].id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          return getPatientMedications(data[0].id);
         }
         return null;
       })
-      .then((r) => r?.json())
       .then((data) => {
         if (data) setMedications(data || []);
       })
+      .catch(() => setMedications([]))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!selectedPatientId) return;
-    const token = localStorage.getItem("careflow_token");
     setLoading(true);
-    fetch(`${API_BASE}/clinical/medications/${selectedPatientId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    getPatientMedications(selectedPatientId)
       .then((data) => setMedications(data || []))
+      .catch(() => setMedications([]))
       .finally(() => setLoading(false));
   }, [selectedPatientId]);
 

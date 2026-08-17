@@ -16,3 +16,9 @@ export async function getPatient(patientId) {
   const response = await api.get(`/patients/${patientId}`);
   return response.data;
 }
+
+export async function getMyPatients() {
+  const response = await api.get("/patients/my");
+  return response.data;
+}
+

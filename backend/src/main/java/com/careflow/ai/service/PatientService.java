@@ -117,6 +117,19 @@ public class PatientService {
     }
 
     @Transactional(readOnly = true)
+    public List<PatientResponse> getMyPatients() {
+        User actor = resolveCurrentUser();
+        if (actor.getRole() == Role.ADMIN) {
+            return patientRepository.findAll().stream().map(this::toResponse).toList();
+        }
+        Set<UUID> accessibleIds = resolveAccessiblePatientIds(actor);
+        if (accessibleIds.isEmpty()) {
+            return List.of();
+        }
+        return patientRepository.findAllById(accessibleIds).stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
     public Page<PatientResponse> search(String query, Pageable pageable) {
         String normalized = query == null ? "" : query.trim();
         User actor = resolveCurrentUser();

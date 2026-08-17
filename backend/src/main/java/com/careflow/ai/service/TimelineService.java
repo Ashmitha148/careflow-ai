@@ -88,7 +88,24 @@ public class TimelineService {
                                                    LocalDateTime end) {
         ensurePatientExists(patientId);
         ensurePatientAccess(patientId);
-        return timelineEventRepository.findFiltered(patientId, eventType, start, end).stream()
+
+        org.springframework.data.jpa.domain.Specification<TimelineEvent> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("patient").get("id"), patientId));
+            if (eventType != null) {
+                predicates.add(cb.equal(root.get("eventType"), eventType));
+            }
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), start));
+            }
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
+            }
+            query.orderBy(cb.asc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        return timelineEventRepository.findAll(spec).stream()
                 .map(this::toResponse)
                 .toList();
     }

@@ -1,11 +1,13 @@
 package com.careflow.ai.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "medication_administration")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MedicationAdministration {
 
     @Id

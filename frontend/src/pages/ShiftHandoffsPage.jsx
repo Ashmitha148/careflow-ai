@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { ArrowRightLeft, Users, Clock, FileText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = "/api";
+import api from "../services/api";
+import { getMyPatients } from "../services/patientApi";
 
 export default function ShiftHandoffsPage() {
   const { user } = useAuth();
@@ -13,26 +13,20 @@ export default function ShiftHandoffsPage() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("careflow_token");
-    fetch(`${API_BASE}/patients/my`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    getMyPatients()
       .then((data) => {
         setPatients(data || []);
         if (data?.length === 1) setSelectedPatientId(data[0].id);
       })
+      .catch(() => setPatients([]))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!selectedPatientId) return;
-    const token = localStorage.getItem("careflow_token");
-    fetch(`${API_BASE}/shift-handoffs/patient/${selectedPatientId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => setHandoffs(data || []))
+    api
+      .get(`/shift-handoffs/patient/${selectedPatientId}`)
+      .then((res) => setHandoffs(res.data || []))
       .catch(() => setHandoffs([]));
   }, [selectedPatientId]);
 

@@ -10,8 +10,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = "/api";
+import api from "../services/api";
+import { getMyPatients } from "../services/patientApi";
+import { getPatientMedications } from "../services/clinicalApi";
 
 export default function VideoVerificationPage() {
   const { user } = useAuth();
@@ -33,20 +34,13 @@ export default function VideoVerificationPage() {
 
   // Load patient's important medications
   useEffect(() => {
-    const token = localStorage.getItem("careflow_token");
-    fetch(`${API_BASE}/patients/my`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    getMyPatients()
       .then((patients) => {
-        if (patients.length > 0) {
-          return fetch(`${API_BASE}/clinical/medications/${patients[0].id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+        if (patients && patients.length > 0) {
+          return getPatientMedications(patients[0].id);
         }
         throw new Error("No patient record found");
       })
-      .then((r) => r.json())
       .then((data) => {
         const important =
           data?.filter((m) => m.important && m.status === "ACTIVE") || [];
@@ -144,27 +138,19 @@ export default function VideoVerificationPage() {
       "Remote video verification submitted by patient via browser",
     );
 
-    const token = localStorage.getItem("careflow_token");
     try {
-      const response = await fetch(
-        `${API_BASE}/clinical/medications/${selectedMedication}/administrations/verify`,
+      await api.post(
+        `/clinical/medications/${selectedMedication}/administrations/verify`,
+        formData,
         {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+          headers: { "Content-Type": "multipart/form-data" },
         },
       );
-
-      if (response.ok) {
-        setStep("success");
-      } else {
-        const err = await response.text();
-        throw new Error(err || "Submission failed");
-      }
+      setStep("success");
     } catch (err) {
       setStep("error");
       setError(
-        err.message || "Failed to submit verification. Please try again.",
+        err.response?.data?.message || err.message || "Failed to submit verification. Please try again.",
       );
     }
   };

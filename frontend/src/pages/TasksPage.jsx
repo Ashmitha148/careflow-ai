@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { ClipboardList, CheckCircle2, Play, Clock, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-
-const API_BASE = "/api";
+import { getPendingTasksForNurse, startTask, completeTask } from "../services/taskApi";
 
 const statusStyles = {
   PENDING: "bg-slate-500/10 text-slate-300",
@@ -18,11 +17,8 @@ export default function TasksPage() {
   const [filter, setFilter] = useState("ALL");
 
   useEffect(() => {
-    const token = localStorage.getItem("careflow_token");
-    fetch(`${API_BASE}/tasks/nurse/${user?.id}/pending`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    if (!user?.id) return;
+    getPendingTasksForNurse(user.id)
       .then((data) => setTasks(data || []))
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));
@@ -31,24 +27,14 @@ export default function TasksPage() {
   const filteredTasks = filter === "ALL" ? tasks : tasks.filter((t) => t.status === filter);
 
   const handleAction = async (action, taskId) => {
-    const token = localStorage.getItem("careflow_token");
     try {
       if (action === "start") {
-        await fetch(`${API_BASE}/tasks/${taskId}/start?userId=${user.id}`, {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await startTask(taskId, user.id);
       } else if (action === "complete") {
-        await fetch(`${API_BASE}/tasks/${taskId}/complete?userId=${user.id}`, {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await completeTask(taskId, user.id);
       }
       // Refresh
-      const res = await fetch(`${API_BASE}/tasks/nurse/${user?.id}/pending`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await getPendingTasksForNurse(user.id);
       setTasks(data || []);
     } catch {
       // no-op

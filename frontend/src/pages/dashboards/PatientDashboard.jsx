@@ -9,8 +9,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import TimelineFeed from "../../components/clinical/TimelineFeed";
-
-const API_BASE = "/api";
+import { getMyPatients } from "../../services/patientApi";
+import {
+  getPatientVitals,
+  getPatientMedications,
+  getPatientAppointments,
+} from "../../services/clinicalApi";
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -22,27 +26,16 @@ export default function PatientDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("careflow_token");
-
     // Get patient's own record
-    fetch(`${API_BASE}/patients/my`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    getMyPatients()
       .then((patients) => {
-        if (patients.length > 0) {
+        if (patients && patients.length > 0) {
           const p = patients[0];
           setPatient(p);
           return Promise.all([
-            fetch(`${API_BASE}/clinical/vitals/${p.id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }).then((r) => r.json()),
-            fetch(`${API_BASE}/clinical/medications/${p.id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }).then((r) => r.json()),
-            fetch(`${API_BASE}/clinical/appointments/${p.id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }).then((r) => r.json()),
+            getPatientVitals(p.id).catch(() => []),
+            getPatientMedications(p.id).catch(() => []),
+            getPatientAppointments(p.id).catch(() => []),
           ]);
         }
         throw new Error("No patient record found");
@@ -52,7 +45,7 @@ export default function PatientDashboard() {
         setMedications(m || []);
         setAppointments(a || []);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err.message || "Failed to load patient record"))
       .finally(() => setLoading(false));
   }, []);
 

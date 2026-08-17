@@ -8,6 +8,9 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: careflow-backend
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
   servlet:
     multipart:
       max-file-size: 10MB
