@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem("careflow_token");
-    if (!token) {
+    if (!token || token === "undefined" || token === "null") {
       setLoading(false);
       return;
     }
@@ -59,6 +59,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         isAuthenticated: !!user,
+        isAdmin: user?.role === "ADMIN",
       }}
     >
       {children}

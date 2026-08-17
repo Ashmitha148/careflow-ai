@@ -1,4 +1,4 @@
-﻿# CareFlow AI
+# CareFlow AI
 
 > An AI-assisted clinical coordination platform for hospitals and care teams — connecting Doctors, Nurses, Caregivers, and Patients in one unified workspace.
 
@@ -25,7 +25,7 @@ You don't need credentials to explore the app. On the login page, click **"Enter
 | **Caregiver** | Family member care plan, timeline, medication schedule, appointments |
 | **Patient** | Personal care dashboard, my medications, upcoming appointments, video verification |
 
-> Demo accounts use pre-seeded synthetic data. No real patient information is ever used.
+> Demo accounts use pre-seeded synthetic data and real JWT authentication. No real patient information is ever used.
 
 ---
 
@@ -41,7 +41,7 @@ You don't need credentials to explore the app. On the login page, click **"Enter
 
 ### Frontend
 - **React 18 + Vite** — fast HMR for development, optimized production bundle
-- **React Router v7** — file-based routing with role-based ProtectedRoute guard
+- **React Router v7** — declarative routing (using BrowserRouter, Routes, and Route) with role-based ProtectedRoute guard
 - **TanStack Query v5** — server state management, background refetching, caching
 - **Axios** — HTTP client with a request interceptor (attaches Bearer token) and a response interceptor (silent JWT refresh on 401)
 - **Zustand** — lightweight client state
@@ -258,7 +258,7 @@ cd frontend
 npm run build   # builds to frontend/dist/
 ```
 
-Set `VITE_API_URL` in Vercel environment variables to point to your backend URL.
+Set `VITE_API_BASE_URL` in Vercel environment variables to point to your deployed Spring Boot backend URL (including the `/api` context path, e.g., `https://careflow-backend.example.com/api`). Do not treat the Vercel SPA rewrite as a backend proxy.
 
 ---
 

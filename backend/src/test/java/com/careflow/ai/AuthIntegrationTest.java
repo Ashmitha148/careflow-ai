@@ -29,7 +29,7 @@ public class AuthIntegrationTest {
 
     @Test
     public void testLoginSuccessForSeededDoctor() throws Exception {
-        LoginRequest loginRequest = new LoginRequest("sarah.jenkins@careflow.ai", "password123");
+        LoginRequest loginRequest = new LoginRequest("doctor1@careflow.ai", "password123");
 
         mockMvc.perform(post("/api/auth/login")
                         .contextPath("/api")
@@ -38,14 +38,14 @@ public class AuthIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))
-                .andExpect(jsonPath("$.user.email").value("sarah.jenkins@careflow.ai"))
+                .andExpect(jsonPath("$.user.email").value("doctor1@careflow.ai"))
                 .andExpect(jsonPath("$.user.fullName").value("Dr. Sarah Jenkins"))
                 .andExpect(jsonPath("$.user.role").value("DOCTOR"));
     }
 
     @Test
     public void testLoginSuccessForSeededNurse() throws Exception {
-        LoginRequest loginRequest = new LoginRequest("emily.watson@careflow.ai", "password123");
+        LoginRequest loginRequest = new LoginRequest("nurse1@careflow.ai", "password123");
 
         mockMvc.perform(post("/api/auth/login")
                         .contextPath("/api")
@@ -54,14 +54,14 @@ public class AuthIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))
-                .andExpect(jsonPath("$.user.email").value("emily.watson@careflow.ai"))
+                .andExpect(jsonPath("$.user.email").value("nurse1@careflow.ai"))
                 .andExpect(jsonPath("$.user.fullName").value("Nurse Emily Watson"))
                 .andExpect(jsonPath("$.user.role").value("NURSE"));
     }
 
     @Test
     public void testLoginFailureInvalidPassword() throws Exception {
-        LoginRequest loginRequest = new LoginRequest("sarah.jenkins@careflow.ai", "wrong-password");
+        LoginRequest loginRequest = new LoginRequest("doctor1@careflow.ai", "wrong-password");
 
         mockMvc.perform(post("/api/auth/login")
                         .contextPath("/api")
