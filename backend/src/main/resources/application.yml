@@ -30,6 +30,13 @@ careflow:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:demo-cloud}
     api-key: ${CLOUDINARY_API_KEY:demo-key}
     api-secret: ${CLOUDINARY_API_SECRET:demo-secret}
+  outbox:
+    poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:2000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+    backoff-base-ms: ${OUTBOX_BACKOFF_BASE_MS:2000}
+  idempotency:
+    ttl-hours: ${IDEMPOTENCY_TTL_HOURS:24}
 
 ---
 # Development Profile - H2 In-Memory Database

@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>{@code /user/queue/notifications} — any authenticated user; rewritten to
  *       a session-scoped unicast queue so delivery is deterministic per user.</li>
- *   <li>{@code /topic/patient/{id}/timeline|vitals|presence} — patient access rule.</li>
+ *   <li>{@code /topic/patient/{id}/timeline|vitals|presence|tasks|handoffs} — patient access rule.</li>
  *   <li>{@code /topic/nurse/{id}/queue} — the nurse themselves or an ADMIN.</li>
  *   <li>anything else — denied by default.</li>
  * </ul>
@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 public class WebSocketTopicAuthorizer implements ChannelInterceptor {
 
     private static final Pattern PATIENT_TOPIC =
-            Pattern.compile("^/topic/patient/([0-9a-fA-F-]{36})/(timeline|vitals|presence|tasks)$");
+            Pattern.compile("^/topic/patient/([0-9a-fA-F-]{36})/(timeline|vitals|presence|tasks|handoffs)$");
     private static final Pattern NURSE_QUEUE_TOPIC =
             Pattern.compile("^/topic/nurse/([0-9a-fA-F-]{36})/queue$");
 

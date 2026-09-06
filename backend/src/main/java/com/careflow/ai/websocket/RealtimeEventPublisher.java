@@ -1,6 +1,7 @@
 package com.careflow.ai.websocket;
 
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.careflow.ai.outbox.OutboxEvent;
+import com.careflow.ai.outbox.OutboxService;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -8,54 +9,87 @@ import java.util.UUID;
 /**
  * Publish entry point for domain events onto the STOMP broker.
  *
- * Phase 1 publishes synchronously from the request thread (acceptable interim:
- * the publish is best-effort and the database is always the source of truth).
- * Phase 2 replaces these direct calls with the transactional outbox + poller,
- * which publishes the same payloads onto the same topics after the transaction
- * commits — no client-visible change.
+ * Phase 2: publishing is transactional. Each method enqueues a
+ * REALTIME_BROADCAST row into the outbox IN the caller's transaction; the
+ * {@link com.careflow.ai.outbox.OutboxRelay} broadcasts it only after that
+ * transaction commits (see docs/adr/0002-transactional-outbox.md). Consequences:
+ * <ul>
+ *   <li>a client can never receive an event for data the database rolled back;</li>
+ *   <li>a broker/WebSocket outage delays delivery (at-least-once retry with
+ *       backoff) but can never silently lose a clinical event;</li>
+ *   <li>private notifications resolve the recipient's live sessions at DELIVERY
+ *       time, not enqueue time — sessions may come and go in between.</li>
+ * </ul>
  *
- * Payloads are the very DTOs the REST endpoints return, so the frontend can
- * apply them to the TanStack Query cache via setQueryData without any
- * transformation.
+ * The method signatures are unchanged from Phase 1: call sites compile and
+ * behave identically from their perspective. Payloads are the very DTOs the
+ * REST endpoints return, so the frontend can apply them to the TanStack Query
+ * cache via setQueryData without any transformation.
  */
 @Component
 public class RealtimeEventPublisher {
 
-    private final SimpMessagingTemplate messagingTemplate;
-    private final WebSocketSessionRegistry sessionRegistry;
+    private final OutboxService outboxService;
 
-    public RealtimeEventPublisher(SimpMessagingTemplate messagingTemplate,
-                                  WebSocketSessionRegistry sessionRegistry) {
-        this.messagingTemplate = messagingTemplate;
-        this.sessionRegistry = sessionRegistry;
+    public RealtimeEventPublisher(OutboxService outboxService) {
+        this.outboxService = outboxService;
     }
 
     /** New append-only timeline event for a patient. */
     public void publishTimelineEvent(UUID patientId, Object event) {
-        messagingTemplate.convertAndSend(RealtimeTopics.patientTimeline(patientId), event);
+        outboxService.enqueue(
+                OutboxEvent.TYPE_REALTIME_BROADCAST,
+                "TIMELINE_EVENT",
+                patientId,
+                RealtimeTopics.patientTimeline(patientId),
+                null,
+                event);
     }
 
     /** Live vital reading for a patient. */
     public void publishVital(UUID patientId, Object vital) {
-        messagingTemplate.convertAndSend(RealtimeTopics.patientVitals(patientId), vital);
+        outboxService.enqueue(
+                OutboxEvent.TYPE_REALTIME_BROADCAST,
+                "VITAL",
+                patientId,
+                RealtimeTopics.patientVitals(patientId),
+                null,
+                vital);
     }
 
-    /** Task state change on a nurse's shift queue and the patient's workspace. */
+    /** Task state change on a nurse's shift queue. */
     public void publishTaskUpdate(UUID assignedNurseId, Object task) {
-        messagingTemplate.convertAndSend(RealtimeTopics.nurseQueue(assignedNurseId), task);
+        outboxService.enqueue(
+                OutboxEvent.TYPE_REALTIME_BROADCAST,
+                "TASK",
+                null,
+                RealtimeTopics.nurseQueue(assignedNurseId),
+                null,
+                task);
     }
 
     /** Task state change scoped to a patient workspace. */
     public void publishPatientTaskUpdate(UUID patientId, Object task) {
-        if (patientId != null) {
-            messagingTemplate.convertAndSend(RealtimeTopics.patientTasks(patientId), task);
+        if (patientId == null) {
+            return;
         }
+        outboxService.enqueue(
+                OutboxEvent.TYPE_REALTIME_BROADCAST,
+                "TASK",
+                patientId,
+                RealtimeTopics.patientTasks(patientId),
+                null,
+                task);
     }
 
     /** Private notification delivered to every live session of the recipient. */
     public void publishNotification(UUID userId, Object notification) {
-        for (String sessionId : sessionRegistry.sessionsFor(userId)) {
-            messagingTemplate.convertAndSend(RealtimeTopics.userQueue(sessionId), notification);
-        }
+        outboxService.enqueue(
+                OutboxEvent.TYPE_REALTIME_BROADCAST,
+                "NOTIFICATION",
+                null,
+                null,
+                userId,
+                notification);
     }
 }

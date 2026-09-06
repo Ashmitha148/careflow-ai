@@ -8,6 +8,7 @@ export const QK = {
   patientTimeline: (id, eventType) => ["patient-timeline", id, eventType || "ALL"],
   patientVitals: (id) => ["patient-vitals", id],
   patientTasks: (id) => ["patient-tasks", id],
+  patientHandoffs: (id) => ["patient-handoffs", id],
   nurseTasks: (nurseId) => ["nurse-tasks", nurseId],
   notifications: (userId) => ["notifications", userId],
   unreadCount: (userId) => ["notifications-unread", userId],

@@ -13,6 +13,8 @@ export const WS_CHANNELS = {
   nurseQueue: (nurseId) => `/topic/nurse/${nurseId}/queue`,
   /** Task state changes scoped to a patient's workspace (payload = Task DTO). */
   patientTasks: (patientId) => `/topic/patient/${patientId}/tasks`,
+  /** Completed async AI shift-handoff summaries (payload = { id, patientId, aiStatus, aiSummary }). */
+  handoffs: (patientId) => `/topic/patient/${patientId}/handoffs`,
   /** Private per-user notifications (payload = Notification DTO). */
   notifications: () => "/user/queue/notifications",
   /** STOMP app-destination for presence control messages (SEND). */

@@ -12,6 +12,8 @@ import java.util.UUID;
  * <pre>
  * /topic/patient/{patientId}/timeline   — append-only timeline events (new rows only)
  * /topic/patient/{patientId}/vitals     — live vitals stream
+ * /topic/patient/{patientId}/tasks      — task state changes in the patient workspace
+ * /topic/patient/{patientId}/handoffs   — async AI shift-handoff summary completions
  * /topic/patient/{patientId}/presence   — who is currently viewing this patient
  * /topic/nurse/{nurseId}/queue          — shift queue / task assignment changes
  * /user/queue/notifications             — private per-user notifications
@@ -48,6 +50,11 @@ public final class RealtimeTopics {
     /** Task state changes for a patient's workspace (in addition to the nurse queue). */
     public static String patientTasks(UUID patientId) {
         return TOPIC_PREFIX + "/patient/" + patientId + "/tasks";
+    }
+
+    /** Completed async AI shift-handoff summaries for a patient (Phase 2 outbox worker). */
+    public static String patientHandoffs(UUID patientId) {
+        return TOPIC_PREFIX + "/patient/" + patientId + "/handoffs";
     }
 
     /**

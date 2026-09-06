@@ -105,6 +105,24 @@ export function handleNotificationEvent(queryClient, notification, userId) {
   }
 }
 
+/** Completed async AI handoff summary pushed by the Phase 2 outbox worker. */
+export function handleHandoffEvent(queryClient, handoff) {
+  if (!handoff?.id || !handoff.patientId) return;
+  queryClient.setQueryData(QK.patientHandoffs(handoff.patientId), (old) => {
+    const list = Array.isArray(old) ? old : [];
+    let replaced = false;
+    const next = list.map((item) => {
+      if (item?.id === handoff.id) {
+        replaced = true;
+        // Merge: the worker payload carries only the AI lifecycle fields.
+        return { ...item, ...handoff };
+      }
+      return item;
+    });
+    return replaced ? next : [handoff, ...list];
+  });
+}
+
 /** Presence snapshot from /topic/patient/{id}/presence. */
 export function extractViewers(payload) {
   if (!Array.isArray(payload?.viewers)) return [];

@@ -4,6 +4,7 @@ import { useSocket } from "../../context/SocketContext";
 import { WS_CHANNELS, PRESENCE_ACTIONS } from "./realtimeChannels";
 import {
   extractViewers,
+  handleHandoffEvent,
   handleTaskEvent,
   handleTimelineEvent,
   handleVitalEvent,
@@ -48,6 +49,8 @@ export function usePatientRealtime(patientId) {
         setViewers(extractViewers(payload))),
       subscribe(WS_CHANNELS.patientTasks(patientId), (task) =>
         handleTaskEvent(queryClient, task)),
+      subscribe(WS_CHANNELS.handoffs(patientId), (handoff) =>
+        handleHandoffEvent(queryClient, handoff)),
     ];
 
     if (connected) {

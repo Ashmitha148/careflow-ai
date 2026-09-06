@@ -10,6 +10,13 @@ import java.util.UUID;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ShiftHandoff {
 
+    /** AI-summary lifecycle states (serialized to clients for polling fallback). */
+    public static final String AI_NONE = "NONE";
+    public static final String AI_PENDING = "PENDING";
+    public static final String AI_PROCESSING = "PROCESSING";
+    public static final String AI_DONE = "DONE";
+    public static final String AI_FAILED = "FAILED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -43,6 +50,14 @@ public class ShiftHandoff {
 
     @Column(name = "ai_summary", columnDefinition = "TEXT")
     private String aiSummary;
+
+    /** Async AI-summary lifecycle (see V6__outbox_idempotency_async_ai.sql). */
+    @Column(name = "ai_status", nullable = false, length = 16)
+    private String aiStatus = AI_NONE;
+
+    /** Populated when {@link #aiStatus} is {@link #AI_FAILED} (bounded at 512 chars). */
+    @Column(name = "ai_error", length = 512)
+    private String aiError;
 
     @Column(name = "shift_date", nullable = false)
     private LocalDate shiftDate;
@@ -78,6 +93,12 @@ public class ShiftHandoff {
 
     public String getAiSummary() { return aiSummary; }
     public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
+
+    public String getAiStatus() { return aiStatus; }
+    public void setAiStatus(String aiStatus) { this.aiStatus = aiStatus; }
+
+    public String getAiError() { return aiError; }
+    public void setAiError(String aiError) { this.aiError = aiError; }
 
     public LocalDate getShiftDate() { return shiftDate; }
     public void setShiftDate(LocalDate shiftDate) { this.shiftDate = shiftDate; }
