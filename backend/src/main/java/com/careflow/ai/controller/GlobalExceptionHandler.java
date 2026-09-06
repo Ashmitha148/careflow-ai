@@ -1,5 +1,7 @@
 package com.careflow.ai.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,6 +14,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(
@@ -51,6 +55,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(
             Exception ex) {
+
+        // Unhandled exceptions must be observable: log the full stack trace so
+        // a 500 can be correlated with its cause in the structured logs.
+        log.error("Unhandled exception while processing request", ex);
 
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,

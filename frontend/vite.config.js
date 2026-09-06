@@ -8,7 +8,10 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true
+        changeOrigin: true,
+        // Allow STOMP-over-WebSocket connections to flow through the dev proxy
+        // (browser connects to /api/ws on :3000 → backend :8080).
+        ws: true
       }
     }
   }

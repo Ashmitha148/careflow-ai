@@ -65,6 +65,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
+                // WebSocket upgrades authenticate via JwtHandshakeInterceptor
+                // (token arrives as ?token=... since browsers cannot set custom
+                // headers on an upgrade). Unauthenticated upgrades are rejected
+                // with 401 there — never by an anonymous-allowed hole, because
+                // no STOMP CONNECT can produce a principal without a valid JWT.
+                .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers.frameOptions(frame -> frame.disable()))

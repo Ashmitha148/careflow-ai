@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
+import { SocketProvider } from "./context/SocketContext";
+import RealtimeBridge from "./services/websocket/RealtimeBridge";
+import { queryClient } from "./services/queryClient";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 import Login from "./pages/Login";
@@ -21,40 +25,45 @@ import VideoVerificationPage from "./pages/VideoVerificationPage";
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppShell />}>
-            {/* Role-based default landing */}
-            <Route path="/" element={<RoleDashboard />} />
+      <QueryClientProvider client={queryClient}>
+        <SocketProvider>
+          <RealtimeBridge />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppShell />}>
+                {/* Role-based default landing */}
+                <Route path="/" element={<RoleDashboard />} />
 
-            {/* Clinical staff routes */}
-            <Route path="/overview" element={<Overview />} />
-            <Route path="/patients" element={<PatientList />} />
-            <Route path="/patients/:patientId" element={<PatientWorkspace />} />
-            <Route path="/timeline" element={<TimelinePage />} />
-            <Route path="/medications" element={<MedicationsPage />} />
-            <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/handoffs" element={<ShiftHandoffsPage />} />
-            <Route path="/nurse-dashboard" element={<NurseDashboard />} />
+                {/* Clinical staff routes */}
+                <Route path="/overview" element={<Overview />} />
+                <Route path="/patients" element={<PatientList />} />
+                <Route path="/patients/:patientId" element={<PatientWorkspace />} />
+                <Route path="/timeline" element={<TimelinePage />} />
+                <Route path="/medications" element={<MedicationsPage />} />
+                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/handoffs" element={<ShiftHandoffsPage />} />
+                <Route path="/nurse-dashboard" element={<NurseDashboard />} />
 
-            {/* Family/Caregiver routes */}
-            <Route path="/family" element={<FamilyDashboard />} />
+                {/* Family/Caregiver routes */}
+                <Route path="/family" element={<FamilyDashboard />} />
 
-            {/* Patient routes */}
-            <Route path="/my-care" element={<PatientDashboard />} />
-            <Route
-              path="/verify-medication"
-              element={<VideoVerificationPage />}
-            />
+                {/* Patient routes */}
+                <Route path="/my-care" element={<PatientDashboard />} />
+                <Route
+                  path="/verify-medication"
+                  element={<VideoVerificationPage />}
+                />
 
-            {/* Admin routes */}
-            <Route path="/audit" element={<AuditPanel />} />
-          </Route>
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+                {/* Admin routes */}
+                <Route path="/audit" element={<AuditPanel />} />
+              </Route>
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SocketProvider>
+      </QueryClientProvider>
     </AuthProvider>
   );
 }

@@ -16,6 +16,7 @@ import com.careflow.ai.repository.MedicationRepository;
 import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +37,7 @@ public class MedicationAdministrationService {
     private final FileAttachmentService fileAttachmentService;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public MedicationAdministrationService(
             MedicationAdministrationRepository administrationRepository,
@@ -45,7 +47,8 @@ public class MedicationAdministrationService {
             PatientAccessRepository patientAccessRepository,
             FileAttachmentService fileAttachmentService,
             TimelineService timelineService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            RealtimeEventPublisher realtimeEventPublisher) {
         this.administrationRepository = administrationRepository;
         this.medicationRepository = medicationRepository;
         this.notificationRepository = notificationRepository;
@@ -54,6 +57,7 @@ public class MedicationAdministrationService {
         this.fileAttachmentService = fileAttachmentService;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     @Transactional
@@ -369,6 +373,8 @@ public class MedicationAdministrationService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
+
+        realtimeEventPublisher.publishNotification(user.getId(), notification);
 
         auditLogService.log(
                 triggeredByUserId,

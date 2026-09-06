@@ -68,6 +68,8 @@ You don't need credentials to explore the app. On the login page, click **"Enter
 
 **JWT auth with silent refresh** — Short-lived (15 min) access tokens limit exposure if intercepted; a 7-day refresh token keeps sessions alive. An Axios interceptor transparently refreshes and retries failed requests on 401 without interrupting the user.
 
+**Real-time clinical event stream** — A STOMP-over-WebSocket channel (`/ws`, SockJS fallback) pushes timeline events, vitals, task assignments, and notifications to connected clients instantly. Topics are role-scoped and authorization-checked per subscription (see [ADR 0001](docs/adr/0001-websocket-topic-design.md)); the frontend wires incoming events straight into the TanStack Query cache — no refetch storms. A live presence indicator shows who is viewing each patient workspace.
+
 **Medication verification with video proof** — Nurses and caregivers can attach short video clips as proof of medication administration, stored via Cloudinary.
 
 **Full audit trail** — Every AI call and every system action is logged for admin review — critical for a system handling clinical data.
@@ -206,6 +208,7 @@ CareFlow/
 │       │   ├── entity/           User, Patient, Medication, Task, ShiftHandoff
 │       │   ├── repository/       Spring Data JPA repositories
 │       │   ├── security/         JwtTokenProvider, SecurityConfig, JwtAuthFilter
+│       │   ├── websocket/        STOMP config, JWT handshake, topic authorizer, presence
 │       │   └── service/          AuthService, PatientService, AiService
 │       └── resources/
 │           ├── application.yml
@@ -214,10 +217,12 @@ CareFlow/
 ├── frontend/
 │   └── src/
 │       ├── App.jsx               Root router
-│       ├── context/AuthContext   Auth state + token management
+│       ├── context/              AuthContext (auth) + SocketContext (real-time)
 │       ├── services/
 │       │   ├── api.js            Axios instance + JWT interceptors
-│       │   └── auth.js           Login / register / refresh / logout
+│       │   ├── auth.js           Login / register / refresh / logout
+│       │   ├── queryClient.js    TanStack Query client + cache-patch helpers
+│       │   └── websocket/        Socket client, SockJS shim, topic map, realtime handlers
 │       ├── pages/
 │       │   ├── Login.jsx         Login + one-click Demo Mode
 │       │   ├── Overview.jsx      Doctor home
@@ -332,11 +337,15 @@ All demo accounts use password **`password123`**. Created by Flyway V2 and V5 mi
 
 **Why TanStack Query?** Clinical data changes frequently. Background refetching, stale-while-revalidate, and built-in loading/error states remove the need for custom data-fetching boilerplate across every component.
 
+**Why STOMP over WebSocket with per-topic authorization?** Real-time clinical data is a safety feature — a nurse needs the abnormal vital the moment it is recorded. Sockets are scoped by role/patient (never a global firehose): the JWT is validated on the handshake, and every SUBSCRIBE is re-checked server-side against the caller's role and patient-access grants, then rewritten to a private destination. See [ADR 0001](docs/adr/0001-websocket-topic-design.md).
+
+**Why push into the TanStack Query cache instead of refetching?** A socket event carries the new record; patching `queryClient.setQueryData` updates every mounted component instantly with zero extra HTTP load. Sockets that only trigger refetches would just duplicate the REST path.
+
 ---
 
 ## What's Next
 
-- Real-time notifications (WebSocket) for critical vitals and missed medications
+- Event-driven backbone (queue + transactional outbox) for AI summaries and notification fan-out
 - Mobile-responsive caregiver app
 - Configurable AI alert thresholds per patient
 - Multi-hospital/tenant support

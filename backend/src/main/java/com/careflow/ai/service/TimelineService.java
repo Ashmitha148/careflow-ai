@@ -17,6 +17,7 @@ import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.TimelineEventRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -39,19 +40,22 @@ public class TimelineService {
     private final NotificationRepository notificationRepository;
     private final PatientAccessRepository patientAccessRepository;
     private final AuditLogService auditLogService;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public TimelineService(TimelineEventRepository timelineEventRepository,
                            PatientRepository patientRepository,
                            UserRepository userRepository,
                            NotificationRepository notificationRepository,
                            PatientAccessRepository patientAccessRepository,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           RealtimeEventPublisher realtimeEventPublisher) {
         this.timelineEventRepository = timelineEventRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
         this.patientAccessRepository = patientAccessRepository;
         this.auditLogService = auditLogService;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     /**
@@ -152,7 +156,15 @@ public class TimelineService {
 
         auditLogService.log(createdByUserId, action, "TimelineEvent", event.getId(), metadata);
 
-        return toResponse(event);
+        TimelineEventResponse response = toResponse(event);
+
+        // Realtime fan-out. The same DTO returned by GET /patients/{id}/timeline
+        // is published to /topic/patient/{patientId}/timeline so clients can
+        // apply it with queryClient.setQueryData — no refetch, and no drift
+        // between what REST returns and what the socket delivers.
+        realtimeEventPublisher.publishTimelineEvent(event.getPatient().getId(), response);
+
+        return response;
     }
 
     private void ensurePatientExists(UUID patientId) {

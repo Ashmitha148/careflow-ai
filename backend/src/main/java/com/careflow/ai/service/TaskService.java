@@ -11,6 +11,7 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.TaskRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class TaskService {
     private final NotificationRepository notificationRepository;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -34,13 +36,15 @@ public class TaskService {
             UserRepository userRepository,
             NotificationRepository notificationRepository,
             TimelineService timelineService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            RealtimeEventPublisher realtimeEventPublisher) {
         this.taskRepository = taskRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     @Transactional
@@ -97,6 +101,8 @@ public class TaskService {
 
         notificationRepository.save(notification);
 
+        realtimeEventPublisher.publishNotification(nurse.getId(), notification);
+
         auditLogService.log(
                 doctorId,
                 "CREATE_TASK",
@@ -104,6 +110,10 @@ public class TaskService {
                 saved.getId(),
                 eventDescription
         );
+
+        realtimeEventPublisher.publishTaskUpdate(nurse.getId(), saved);
+
+        realtimeEventPublisher.publishPatientTaskUpdate(saved.getPatient().getId(), saved);
 
         return saved;
     }
@@ -127,7 +137,13 @@ public class TaskService {
 
         task.setStatus(TaskStatus.IN_PROGRESS);
 
-        return taskRepository.save(task);
+        Task saved = taskRepository.save(task);
+
+        realtimeEventPublisher.publishTaskUpdate(nurseId, saved);
+
+        realtimeEventPublisher.publishPatientTaskUpdate(saved.getPatient().getId(), saved);
+
+        return saved;
     }
 
     @Transactional
@@ -170,6 +186,10 @@ public class TaskService {
                 eventDescription
         );
 
+        realtimeEventPublisher.publishTaskUpdate(saved.getAssignedNurse().getId(), saved);
+
+        realtimeEventPublisher.publishPatientTaskUpdate(saved.getPatient().getId(), saved);
+
         return saved;
     }
 
@@ -206,6 +226,10 @@ public class TaskService {
                 saved.getId(),
                 eventDescription
         );
+
+        realtimeEventPublisher.publishTaskUpdate(saved.getAssignedNurse().getId(), saved);
+
+        realtimeEventPublisher.publishPatientTaskUpdate(saved.getPatient().getId(), saved);
 
         return saved;
     }

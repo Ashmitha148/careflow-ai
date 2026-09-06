@@ -5,6 +5,7 @@ import com.careflow.ai.entity.NotificationType;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +17,15 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public NotificationService(
             NotificationRepository notificationRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            RealtimeEventPublisher realtimeEventPublisher) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     @Transactional
@@ -40,7 +44,11 @@ public class NotificationService {
         notification.setMessage(message);
         notification.setRead(false);
 
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        realtimeEventPublisher.publishNotification(userId, saved);
+
+        return saved;
     }
 
     @Transactional(readOnly = true)

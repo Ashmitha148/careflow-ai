@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ClipboardList, Play, Plus, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import {
   cancelTask,
@@ -8,6 +9,7 @@ import {
   getTasksForPatient,
   startTask,
 } from "../../services/taskApi";
+import { QK } from "../../services/queryKeys";
 
 const statusStyles = {
   PENDING: "bg-slate-500/10 text-slate-300",
@@ -18,9 +20,7 @@ const statusStyles = {
 
 export default function TaskWidget({ patientId }) {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -30,17 +30,25 @@ export default function TaskWidget({ patientId }) {
   const isDoctorOrAdmin = user?.role === "DOCTOR" || user?.role === "ADMIN";
   const isNurse = user?.role === "NURSE";
 
-  function refresh() {
-    if (!patientId) return;
-    setLoading(true);
-    setError(null);
-    getTasksForPatient(patientId)
-      .then((data) => setTasks(data || []))
-      .catch((err) => setError(err))
-      .finally(() => setLoading(false));
-  }
+  // Patient-scoped task list backed by TanStack Query. The realtime bridge
+  // mutates this exact key (["patient-tasks", patientId]) when a task changes
+  // on /topic/patient/{patientId}/tasks.
+  const {
+    data: tasks = [],
+    isPending,
+    error: queryError = null,
+  } = useQuery({
+    queryKey: QK.patientTasks(patientId),
+    queryFn: () => getTasksForPatient(patientId),
+    enabled: Boolean(patientId),
+  });
+  const [mutationError, setMutationError] = useState(null);
+  const error = queryError || mutationError;
+  const loading = isPending;
 
-  useEffect(refresh, [patientId]);
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: QK.patientTasks(patientId) });
+  }
 
   async function handleCreate(e) {
     e.preventDefault();

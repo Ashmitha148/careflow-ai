@@ -1,46 +1,63 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ClipboardList, Play, Users } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { usePatients } from "../../services/patientHooks";
 import {
   completeTask,
-  getPendingTasksForNurse,
+  getTasksForNurse,
   startTask,
 } from "../../services/taskApi";
+import { QK } from "../../services/queryKeys";
 
 const statusStyles = {
   PENDING: "bg-slate-500/10 text-slate-300",
   IN_PROGRESS: "bg-amber-500/10 text-amber-400",
 };
 
+function upsertTask(list, task) {
+  const next = (Array.isArray(list) ? list : []).map((item) =>
+    item?.id === task?.id ? task : item,
+  );
+  if (!next.some((item) => item?.id === task?.id)) next.unshift(task);
+  return next;
+}
+
 export default function NurseDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { patients } = usePatients();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const myPatients = patients.filter((p) => p.assignedNurseId === user?.id);
 
-  function refresh() {
-    if (!user?.id) return;
-    setLoading(true);
-    getPendingTasksForNurse(user.id)
-      .then((data) => setTasks(data || []))
-      .catch(() => setTasks([]))
-      .finally(() => setLoading(false));
-  }
+  // Full nurse queue backed by TanStack Query. The realtime bridge applies
+  // task assignments and state changes to this cache key via setQueryData as
+  // they arrive on /topic/nurse/{nurseId}/queue.
+  const { data: allTasks = [], isLoading } = useQuery({
+    queryKey: QK.nurseTasks(user?.id),
+    queryFn: () => getTasksForNurse(user.id),
+    enabled: Boolean(user?.id),
+  });
 
-  useEffect(refresh, [user?.id]);
+  const tasks = allTasks.filter(
+    (t) => t.status === "PENDING" || t.status === "IN_PROGRESS",
+  );
+  const loading = isLoading;
 
   async function handleAction(action, taskId) {
     try {
-      if (action === "start") await startTask(taskId, user.id);
-      if (action === "complete") await completeTask(taskId, user.id);
-      refresh();
+      const updated =
+        action === "start"
+          ? await startTask(taskId, user.id)
+          : await completeTask(taskId, user.id);
+      // The socket delivers the same task too; upsert is idempotent.
+      queryClient.setQueryData(QK.nurseTasks(user.id), (old) =>
+        upsertTask(old, updated),
+      );
     } catch {
-      // no-op, refresh will show current state
+      // no-op; invalidation will converge with server state
+      queryClient.invalidateQueries({ queryKey: QK.nurseTasks(user?.id) });
     }
   }
 

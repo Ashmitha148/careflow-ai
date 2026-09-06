@@ -10,6 +10,7 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.ShiftHandoffRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class ShiftHandoffService {
     private final NotificationRepository notificationRepository;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public ShiftHandoffService(
             ShiftHandoffRepository handoffRepository,
@@ -33,13 +35,15 @@ public class ShiftHandoffService {
             UserRepository userRepository,
             NotificationRepository notificationRepository,
             TimelineService timelineService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            RealtimeEventPublisher realtimeEventPublisher) {
         this.handoffRepository = handoffRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     @Transactional
@@ -107,6 +111,8 @@ public class ShiftHandoffService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
+
+        realtimeEventPublisher.publishNotification(toNurse.getId(), notification);
 
         auditLogService.log(
                 fromNurseId,

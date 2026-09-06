@@ -11,6 +11,7 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.repository.VitalRepository;
+import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class VitalService {
     private final NotificationRepository notificationRepository;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     public VitalService(
             VitalRepository vitalRepository,
@@ -33,13 +35,15 @@ public class VitalService {
             UserRepository userRepository,
             NotificationRepository notificationRepository,
             TimelineService timelineService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            RealtimeEventPublisher realtimeEventPublisher) {
         this.vitalRepository = vitalRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
+        this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
     @Transactional
@@ -59,6 +63,9 @@ public class VitalService {
         }
 
         Vital savedVital = vitalRepository.save(vital);
+
+        // Live vitals stream — same entity shape GET /clinical/vitals/{patientId} returns.
+        realtimeEventPublisher.publishVital(patientId, savedVital);
 
         boolean critical = isCritical(savedVital);
 
@@ -205,6 +212,8 @@ public class VitalService {
         notification.setCreatedAt(LocalDateTime.now());
 
         notificationRepository.save(notification);
+
+        realtimeEventPublisher.publishNotification(user.getId(), notification);
     }
 
     @Transactional(readOnly = true)

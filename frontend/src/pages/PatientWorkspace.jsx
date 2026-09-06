@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarDays,
   ChevronRight,
+  Eye,
   FileText,
   HeartPulse,
   Pill,
@@ -17,8 +18,9 @@ import { useEffect, useState } from "react";
 import {
   getPatientAppointments,
   getPatientMedications,
-  getPatientVitals,
 } from "../services/clinicalApi";
+import { usePatientVitals } from "../services/clinicalHooks";
+import { usePatientRealtime } from "../services/websocket/patientRealtimeHooks";
 import TimelineFeed from "../components/clinical/TimelineFeed";
 import TimelineReplay from "../components/clinical/TimelineReplay";
 import TaskWidget from "../components/clinical/TaskWidget";
@@ -70,7 +72,10 @@ export default function PatientWorkspace() {
     error: timelineError,
   } = usePatientTimeline(patientId);
 
-  const [vitals, setVitals] = useState([]);
+  const { vitals } = usePatientVitals(patientId);
+  // Live "who's viewing" indicator + timeline/vitals socket subscriptions.
+  const { viewers } = usePatientRealtime(patientId);
+
   const [medications, setMedications] = useState([]);
   const [appointments, setAppointments] = useState([]);
 
@@ -84,17 +89,14 @@ export default function PatientWorkspace() {
     if (!patientId) return;
 
     Promise.all([
-      getPatientVitals(patientId),
       getPatientMedications(patientId),
       getPatientAppointments(patientId),
     ])
-      .then(([vitalsData, medicationsData, appointmentsData]) => {
-        setVitals(vitalsData || []);
+      .then(([medicationsData, appointmentsData]) => {
         setMedications(medicationsData || []);
         setAppointments(appointmentsData || []);
       })
       .catch(() => {
-        setVitals([]);
         setMedications([]);
         setAppointments([]);
       });
@@ -156,12 +158,24 @@ export default function PatientWorkspace() {
                 <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-medium text-teal-400">
                   Active record
                 </span>
+
+                {viewers.length > 0 && (
+                  <span
+                    className="rounded-full bg-sky-500/10 px-2.5 py-1 text-[10px] font-medium text-sky-400"
+                    title={viewers.map((v) => `${v.fullName} (${v.role})`).join(", ")}
+                  >
+                    <Eye className="mr-1 inline-block h-3 w-3" />
+                    {viewers.length}{" "}
+                    {viewers.length === 1 ? "clinician" : "clinicians"}{" "}
+                    viewing
+                  </span>
+                )}
               </div>
 
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 {patient.mrn}
-                {patient.dob ? ` · DOB ${patient.dob}` : ""}
-                {patient.gender ? ` · ${patient.gender}` : ""}
+                {patient.dob ? ` ï¿½ DOB ${patient.dob}` : ""}
+                {patient.gender ? ` ï¿½ ${patient.gender}` : ""}
               </p>
             </div>
           </div>
@@ -184,7 +198,7 @@ export default function PatientWorkspace() {
           </div>
 
           <p className="mt-3 text-2xl font-semibold">
-            {latestVital?.value ?? "—"}
+            {latestVital?.value ?? "ï¿½"}
           </p>
 
           <p className="mt-1 text-[11px] text-[var(--text-muted)]">

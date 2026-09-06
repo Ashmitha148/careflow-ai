@@ -1,47 +1,26 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getPatientTimeline, getTimelineReplay } from "./timelineApi";
+import { QK } from "./queryKeys";
 
+/**
+ * Patient timeline backed by TanStack Query. The realtime bridge mutates the
+ * exact same cache key (["patient-timeline", patientId, type]) via
+ * queryClient.setQueryData when a new append-only event arrives on
+ * /topic/patient/{id}/timeline, so this hook re-renders with the new event
+ * without any refetch.
+ */
 export function usePatientTimeline(patientId, params = {}) {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(Boolean(patientId));
-  const [error, setError] = useState(null);
+  const query = useQuery({
+    queryKey: QK.patientTimeline(patientId, params.eventType || "ALL"),
+    queryFn: () => getPatientTimeline(patientId, params),
+    enabled: Boolean(patientId),
+  });
 
-  useEffect(() => {
-    if (!patientId) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
-    let active = true;
-
-    setLoading(true);
-    setError(null);
-
-    getPatientTimeline(patientId, params)
-      .then((data) => {
-        if (active) {
-          setEvents(data || []);
-        }
-      })
-      .catch((err) => {
-        if (active) {
-          setError(err);
-          setEvents([]);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [patientId, params.eventType, params.start, params.end]);
-
-  return { events, loading, error };
+  return {
+    events: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ?? null,
+  };
 }
 
 export async function loadTimelineReplay(patientId, range) {

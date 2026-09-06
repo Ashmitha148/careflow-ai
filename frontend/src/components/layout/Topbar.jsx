@@ -6,8 +6,17 @@ import {
   Search,
   Sun,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
+import { useUnreadCount } from "../../services/notificationsHooks";
+
+const realtimeTone = {
+  connected: "text-emerald-400",
+  connecting: "text-amber-400",
+  error: "text-rose-400",
+  disconnected: "text-[var(--text-muted)]",
+};
 
 export default function Topbar() {
   const {
@@ -16,8 +25,30 @@ export default function Topbar() {
     theme,
     toggleTheme,
     unreadNotifications,
+    realtimeStatus,
+    latestNotification,
+    clearLatestNotification,
   } = useStore();
   const { user: currentUser } = useAuth();
+
+  // Pull the authoritative unread count from the server (hydrates the store badge).
+  useUnreadCount(currentUser?.id);
+
+  // Auto-dismiss the realtime notification toast after a few seconds.
+  useEffect(() => {
+    if (!latestNotification) return undefined;
+    const timer = setTimeout(clearLatestNotification, 6000);
+    return () => clearTimeout(timer);
+  }, [latestNotification, clearLatestNotification]);
+
+  const connectionLabel =
+    realtimeStatus === "connected"
+      ? "Live"
+      : realtimeStatus === "connecting"
+        ? "Connecting…"
+        : realtimeStatus === "error"
+          ? "Realtime degraded"
+          : "Offline";
 
   return (
     <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-primary)]/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
@@ -63,6 +94,14 @@ export default function Topbar() {
           Copilot
         </button>
 
+        <span
+          className={`inline-flex items-center gap-1 rounded-full bg-[var(--bg-subtle)] px-2 py-1 text-[10px] font-medium ${realtimeTone[realtimeStatus] || realtimeTone.disconnected}`}
+          title={`Realtime connection: ${realtimeStatus}`}
+        >
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+          {connectionLabel}
+        </span>
+
         <button
           type="button"
           className="relative rounded-xl p-2.5 text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
@@ -71,7 +110,9 @@ export default function Topbar() {
           <Bell className="h-[18px] w-[18px]" />
 
           {unreadNotifications > 0 && (
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-rose-400 ring-2 ring-[var(--bg-primary)]" />
+            <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white">
+              {unreadNotifications > 99 ? "99+" : unreadNotifications}
+            </span>
           )}
         </button>
 
@@ -96,6 +137,33 @@ export default function Topbar() {
           </div>
         </div>
       </div>
+
+      {/* Real-time notification toast (fed by the socket bridge) */}
+      {latestNotification && (
+        <div className="fixed bottom-4 right-4 z-50 w-[320px] rounded-2xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] p-4 shadow-2xl">
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400">
+              <Bell className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-[var(--text-primary)]">
+                {latestNotification.type?.replaceAll("_", " ") ?? "Notification"}
+              </p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-[var(--text-secondary)]">
+                {latestNotification.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clearLatestNotification}
+              className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              aria-label="Dismiss notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
