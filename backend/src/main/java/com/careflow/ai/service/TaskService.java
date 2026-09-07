@@ -12,6 +12,8 @@ import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.TaskRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
+import com.careflow.ai.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,7 @@ public class TaskService {
         this.realtimeEventPublisher = realtimeEventPublisher;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Task createTask(
             UUID patientId,
@@ -118,6 +121,7 @@ public class TaskService {
         return saved;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Task startTask(UUID taskId, UUID nurseId) {
 
@@ -146,6 +150,7 @@ public class TaskService {
         return saved;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Task completeTask(UUID taskId, UUID nurseId) {
 
@@ -193,6 +198,7 @@ public class TaskService {
         return saved;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Task cancelTask(UUID taskId, UUID userId) {
 

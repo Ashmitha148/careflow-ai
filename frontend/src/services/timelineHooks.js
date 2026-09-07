@@ -17,7 +17,9 @@ export function usePatientTimeline(patientId, params = {}) {
   });
 
   return {
-    events: query.data ?? [],
+    events: Array.isArray(query.data) ? query.data : (query.data?.items ?? []),
+    nextCursor: query.data?.nextCursor ?? null,
+    hasMore: query.data?.hasMore ?? false,
     loading: query.isLoading,
     error: query.error ?? null,
   };

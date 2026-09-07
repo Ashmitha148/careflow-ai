@@ -189,3 +189,15 @@ erDiagram
         text metadata
     }
 ```
+
+## Indexing Strategy & Composite Indexes (V7)
+
+To ensure low latency for real-time dashboards and cursor-paginated feeds, the following composite indexes are configured:
+
+1. `idx_timeline_events_patient_created` (`timeline_events(patient_id, created_at DESC)`): Speeds up patient-specific timeline feed lookups and cursor pagination.
+2. `idx_tasks_nurse_status_due` (`tasks(assigned_nurse_id, status, due_at ASC)`): Optimizes nurse shift queue filtering by status and due date.
+3. `idx_vitals_patient_recorded` (`vitals(patient_id, recorded_at DESC)`): Accelerates latest vital series lookups per patient.
+4. `idx_vitals_patient_type_recorded` (`vitals(patient_id, type, recorded_at DESC)`): Optimizes type-filtered vital series lookups.
+5. `idx_audit_logs_user_created` (`audit_logs(user_id, created_at DESC)`): Speeds up user audit log history searches.
+6. `idx_audit_logs_entity_created` (`audit_logs(entity_type, entity_id, created_at DESC)`): Speeds up entity audit log searches.
+

@@ -16,6 +16,8 @@ import com.careflow.ai.repository.ShiftHandoffRepository;
 import com.careflow.ai.repository.TaskRepository;
 import com.careflow.ai.repository.TimelineEventRepository;
 import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.config.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,7 @@ public class DashboardService {
         this.timelineEventRepository = timelineEventRepository;
     }
 
+    @Cacheable(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, key = "#root.target.resolveCurrentUserCacheKey()")
     @Transactional(readOnly = true)
     public Summary getSummary() {
         User actor = resolveCurrentUser();
@@ -131,6 +134,15 @@ public class DashboardService {
             }
         }
         return ids;
+    }
+
+    public String resolveCurrentUserCacheKey() {
+        try {
+            User actor = resolveCurrentUser();
+            return actor != null ? actor.getId().toString() : "anonymous";
+        } catch (Exception e) {
+            return "anonymous";
+        }
     }
 
     private User resolveCurrentUser() {

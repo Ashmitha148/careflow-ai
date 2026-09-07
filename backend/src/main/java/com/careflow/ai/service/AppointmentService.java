@@ -8,6 +8,8 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.AppointmentRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,7 @@ public class AppointmentService {
         this.auditLogService = auditLogService;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Appointment scheduleAppointment(
             UUID patientId,
@@ -84,6 +87,7 @@ public class AppointmentService {
         return saved;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public Appointment updateStatus(
             UUID appointmentId,

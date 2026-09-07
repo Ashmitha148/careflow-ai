@@ -21,7 +21,14 @@ public class AuditLogController {
     }
 
     @GetMapping
-    public Page<AuditLog> getAuditLogs(Pageable pageable) {
+    public Object getAuditLogs(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit,
+            Pageable pageable) {
+        if (cursor != null || (limit != null && limit > 0)) {
+            int effectiveLimit = limit != null ? limit : 50;
+            return auditLogService.getAuditLogsCursor(cursor, effectiveLimit);
+        }
         return auditLogService.getAuditLogs(pageable);
     }
 

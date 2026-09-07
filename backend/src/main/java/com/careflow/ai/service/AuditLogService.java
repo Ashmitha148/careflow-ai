@@ -1,5 +1,6 @@
 package com.careflow.ai.service;
 
+import com.careflow.ai.dto.CursorPageResponse;
 import com.careflow.ai.entity.AuditLog;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.AuditLogRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -52,6 +54,24 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public Page<AuditLog> getAuditLogs(Pageable pageable) {
         return auditLogRepository.findAllByOrderByTimestampDesc(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<AuditLog> getAuditLogsCursor(String cursor, int limit) {
+        int pageSize = Math.min(Math.max(limit, 1), 100);
+        Page<AuditLog> page = auditLogRepository.findAllByOrderByTimestampDesc(
+                org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
+        List<AuditLog> all = page.getContent();
+        boolean hasMore = all.size() > pageSize;
+        List<AuditLog> items = hasMore ? all.subList(0, pageSize) : all;
+        String nextCursor = (hasMore && !items.isEmpty()) ? items.get(items.size() - 1).getId().toString() : null;
+
+        return CursorPageResponse.<AuditLog>builder()
+                .items(items)
+                .nextCursor(nextCursor)
+                .hasMore(hasMore)
+                .pageSize(pageSize)
+                .build();
     }
 
     @Transactional(readOnly = true)

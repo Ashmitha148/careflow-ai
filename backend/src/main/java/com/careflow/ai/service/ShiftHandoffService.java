@@ -14,6 +14,8 @@ import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.ShiftHandoffRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
+import com.careflow.ai.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +55,7 @@ public class ShiftHandoffService {
         this.outboxService = outboxService;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public ShiftHandoff createHandoff(
             UUID patientId,

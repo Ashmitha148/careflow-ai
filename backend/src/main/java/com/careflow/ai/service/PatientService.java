@@ -11,6 +11,8 @@ import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.config.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -45,6 +47,7 @@ public class PatientService {
         this.auditLogService = auditLogService;
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public PatientResponse register(RegisterRequest request, UUID actorUserId) {
         Patient patient = Patient.builder()
@@ -70,6 +73,7 @@ public class PatientService {
         return toResponse(patient);
     }
 
+    @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public PatientResponse update(UUID patientId, UpdateRequest request, UUID actorUserId) {
         Patient patient = patientRepository.findById(patientId)

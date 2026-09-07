@@ -11,6 +11,7 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.repository.VitalRepository;
+import com.careflow.ai.dto.CursorPageResponse;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,6 +225,37 @@ public class VitalService {
         }
 
         return vitalRepository.findByPatient_IdOrderByRecordedAtDesc(patientId);
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<Vital> getPatientVitalsCursor(UUID patientId, String cursor, int limit) {
+        if (!patientRepository.existsById(patientId)) {
+            throw new RuntimeException("Patient not found: " + patientId);
+        }
+        int pageSize = Math.min(Math.max(limit, 1), 100);
+        java.util.List<Vital> all = vitalRepository.findByPatient_IdOrderByRecordedAtDesc(patientId);
+
+        int startIndex = 0;
+        if (cursor != null && !cursor.isBlank()) {
+            for (int i = 0; i < all.size(); i++) {
+                if (all.get(i).getId().toString().equals(cursor.trim())) {
+                    startIndex = i + 1;
+                    break;
+                }
+            }
+        }
+
+        int endIndex = Math.min(startIndex + pageSize, all.size());
+        java.util.List<Vital> items = startIndex < all.size() ? all.subList(startIndex, endIndex) : java.util.List.of();
+        boolean hasMore = endIndex < all.size();
+        String nextCursor = (hasMore && !items.isEmpty()) ? items.get(items.size() - 1).getId().toString() : null;
+
+        return CursorPageResponse.<Vital>builder()
+                .items(items)
+                .nextCursor(nextCursor)
+                .hasMore(hasMore)
+                .pageSize(pageSize)
+                .build();
     }
 
     @Transactional(readOnly = true)

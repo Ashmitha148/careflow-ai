@@ -1,5 +1,6 @@
 package com.careflow.ai.service;
 
+import com.careflow.ai.dto.CursorPageResponse;
 import com.careflow.ai.dto.TimelineDto.CriticalAlertDetail;
 import com.careflow.ai.dto.TimelineDto.NotifiedUser;
 import com.careflow.ai.dto.TimelineDto.TimelineEventResponse;
@@ -86,12 +87,16 @@ public class TimelineService {
     }
 
     @Transactional(readOnly = true)
-    public List<TimelineEventResponse> getTimeline(UUID patientId,
-                                                   EventType eventType,
-                                                   LocalDateTime start,
-                                                   LocalDateTime end) {
+    public CursorPageResponse<TimelineEventResponse> getTimelineCursor(UUID patientId,
+                                                                         EventType eventType,
+                                                                         LocalDateTime start,
+                                                                         LocalDateTime end,
+                                                                         String cursor,
+                                                                         int limit) {
         ensurePatientExists(patientId);
         ensurePatientAccess(patientId);
+
+        int pageSize = Math.min(Math.max(limit, 1), 100);
 
         org.springframework.data.jpa.domain.Specification<TimelineEvent> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -105,13 +110,39 @@ public class TimelineService {
             if (end != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
             }
-            query.orderBy(cb.asc(root.get("createdAt")));
+            if (cursor != null && !cursor.isBlank()) {
+                try {
+                    UUID cursorId = UUID.fromString(cursor.trim());
+                    predicates.add(cb.greaterThan(root.get("id"), cursorId));
+                } catch (IllegalArgumentException e) {
+                    // Ignore invalid cursor format gracefully
+                }
+            }
+            query.orderBy(cb.asc(root.get("createdAt")), cb.asc(root.get("id")));
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
 
-        return timelineEventRepository.findAll(spec).stream()
-                .map(this::toResponse)
-                .toList();
+        List<TimelineEvent> rawEvents = timelineEventRepository.findAll(spec);
+        boolean hasMore = rawEvents.size() > pageSize;
+        List<TimelineEvent> pageEvents = hasMore ? rawEvents.subList(0, pageSize) : rawEvents;
+
+        List<TimelineEventResponse> responses = pageEvents.stream().map(this::toResponse).toList();
+        String nextCursor = (hasMore && !responses.isEmpty()) ? responses.get(responses.size() - 1).getId().toString() : null;
+
+        return CursorPageResponse.<TimelineEventResponse>builder()
+                .items(responses)
+                .nextCursor(nextCursor)
+                .hasMore(hasMore)
+                .pageSize(pageSize)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TimelineEventResponse> getTimeline(UUID patientId,
+                                                   EventType eventType,
+                                                   LocalDateTime start,
+                                                   LocalDateTime end) {
+        return getTimelineCursor(patientId, eventType, start, end, null, 100).getItems();
     }
 
     @Transactional(readOnly = true)

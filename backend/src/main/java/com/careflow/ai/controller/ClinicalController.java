@@ -54,7 +54,14 @@ public class ClinicalController {
 
     @GetMapping("/vitals/{patientId}")
     @PreAuthorize("isAuthenticated()")
-    public List<Vital> getVitals(@PathVariable UUID patientId) {
+    public Object getVitals(
+            @PathVariable UUID patientId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        if (cursor != null || (limit != null && limit > 0)) {
+            int effectiveLimit = limit != null ? limit : 50;
+            return vitalService.getPatientVitalsCursor(patientId, cursor, effectiveLimit);
+        }
         return vitalService.getPatientVitals(patientId);
     }
 

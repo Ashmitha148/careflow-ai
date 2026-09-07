@@ -22,11 +22,25 @@ public class TimelineController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public List<TimelineEventResponse> getTimeline(
+    public Object getTimeline(
             @PathVariable UUID patientId,
             @RequestParam(required = false) EventType eventType,
             @RequestParam(required = false) LocalDateTime start,
-            @RequestParam(required = false) LocalDateTime end) {
+            @RequestParam(required = false) LocalDateTime end,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+
+        if (cursor != null || (limit != null && limit > 0)) {
+            int effectiveLimit = limit != null ? limit : 50;
+            return timelineService.getTimelineCursor(
+                    patientId,
+                    eventType,
+                    start,
+                    end,
+                    cursor,
+                    effectiveLimit
+            );
+        }
 
         return timelineService.getTimeline(
                 patientId,

@@ -11,6 +11,11 @@ import { useStore } from "../../store/useStore";
  */
 
 function upsertById(existing, incoming) {
+  if (existing && !Array.isArray(existing) && Array.isArray(existing.items)) {
+    const list = existing.items.filter((item) => item && item.id !== incoming?.id);
+    list.unshift(incoming);
+    return { ...existing, items: list };
+  }
   const list = Array.isArray(existing) ? existing : [];
   const next = list.filter((item) => item && item.id !== incoming?.id);
   next.unshift(incoming);
