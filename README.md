@@ -351,7 +351,6 @@ All demo accounts use password **`password123`**. Created by Flyway V2 and V5 mi
 
 ## What's Next
 
-- Mobile-responsive caregiver app
 - Multi-hospital/tenant support
 
 ---

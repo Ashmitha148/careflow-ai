@@ -28,6 +28,7 @@ export default function Topbar() {
     realtimeStatus,
     latestNotification,
     clearLatestNotification,
+    toggleMobileNav,
   } = useStore();
   const { user: currentUser } = useAuth();
 
@@ -55,6 +56,7 @@ export default function Topbar() {
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
+          onClick={toggleMobileNav}
           className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] lg:hidden"
           aria-label="Open navigation"
         >
@@ -84,14 +86,14 @@ export default function Topbar() {
           type="button"
           onClick={toggleCopilot}
           className={[
-            "hidden items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex",
+            "flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-medium transition-all sm:px-3",
             isCopilotOpen
               ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/10"
               : "border border-teal-500/20 bg-teal-500/5 text-teal-400 hover:bg-teal-500/10",
           ].join(" ")}
         >
           <Bot className="h-4 w-4" />
-          Copilot
+          <span className="hidden sm:inline">Copilot</span>
         </button>
 
         <span
@@ -140,7 +142,7 @@ export default function Topbar() {
 
       {/* Real-time notification toast (fed by the socket bridge) */}
       {latestNotification && (
-        <div className="fixed bottom-4 right-4 z-50 w-[320px] rounded-2xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] p-4 shadow-2xl">
+        <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] max-w-[320px] rounded-2xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] p-4 shadow-2xl">
           <div className="flex items-start gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400">
               <Bell className="h-4 w-4" />

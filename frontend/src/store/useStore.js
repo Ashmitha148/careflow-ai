@@ -5,6 +5,7 @@ export const useStore = create((set, get) => ({
   selectedPatientId: 'b0000000-0000-0000-0000-000000000001',
   selectedEventType: null, // EventType filter
   isCopilotOpen: false,
+  isMobileNavOpen: false, // off-canvas sidebar drawer on < lg screens
   theme: 'dark',
   unreadNotifications: 0,
   latestNotification: null, // most recent socket-delivered notification (for the toast)
@@ -15,6 +16,8 @@ export const useStore = create((set, get) => ({
   setSelectedPatientId: (patientId) => set({ selectedPatientId: patientId }),
   setSelectedEventType: (eventType) => set({ selectedEventType: eventType }),
   toggleCopilot: () => set((state) => ({ isCopilotOpen: !state.isCopilotOpen })),
+  setMobileNavOpen: (open) => set({ isMobileNavOpen: open }),
+  toggleMobileNav: () => set((state) => ({ isMobileNavOpen: !state.isMobileNavOpen })),
   setRealtimeStatus: (status) => set({ realtimeStatus: status }),
   setUnreadNotifications: (count) => set({ unreadNotifications: count }),
   setLatestNotification: (notification) => set({ latestNotification: notification }),

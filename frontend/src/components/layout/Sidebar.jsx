@@ -12,6 +12,7 @@ import {
   Video,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 
@@ -105,7 +106,7 @@ const getNavigation = (role) => {
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveTab, activeTab } = useStore();
+  const { setActiveTab, activeTab, isMobileNavOpen, setMobileNavOpen } = useStore();
   const { user, logout, isAdmin } = useAuth();
 
   const navigation = getNavigation(user?.role);
@@ -120,11 +121,32 @@ export default function Sidebar() {
 
   const handleNavClick = (id, path) => {
     setActiveTab(id);
+    setMobileNavOpen(false); // close the mobile drawer after navigating
     navigate(path);
   };
 
+  // Safety net: any route change (redirects, logout, browser back) closes the drawer.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [currentPath, setMobileNavOpen]);
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] lg:flex lg:flex-col">
+    <>
+      {/* Mobile overlay — dims the page and closes the drawer on tap (< lg) */}
+      {isMobileNavOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] transition-transform duration-300 ease-out lg:translate-x-0",
+          isMobileNavOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+        ].join(" ")}
+      >
       <div className="flex h-[72px] items-center border-b border-[var(--border-color)] px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/10">
@@ -234,6 +256,7 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
