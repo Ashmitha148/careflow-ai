@@ -1,6 +1,7 @@
 package com.careflow.ai.service;
 
-import com.careflow.ai.config.GeminiClient;
+import com.careflow.ai.config.AiUnavailableException;
+import com.careflow.ai.config.ResilientAiClient;
 import com.careflow.ai.dto.TimelineDto.TimelineEventResponse;
 import com.careflow.ai.entity.AiPromptHistory;
 import com.careflow.ai.entity.Patient;
@@ -40,14 +41,14 @@ public class CopilotService {
             not replace professional medical judgment."
             """;
 
-    private final GeminiClient geminiClient;
+    private final ResilientAiClient geminiClient;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final AiPromptHistoryRepository aiPromptHistoryRepository;
     private final TimelineService timelineService;
 
     public CopilotService(
-            GeminiClient geminiClient,
+            ResilientAiClient geminiClient,
             PatientRepository patientRepository,
             UserRepository userRepository,
             AiPromptHistoryRepository aiPromptHistoryRepository,
@@ -203,6 +204,21 @@ public class CopilotService {
             aiPromptHistoryRepository.save(history);
 
             return response;
+
+        } catch (AiUnavailableException ex) {
+
+            // Graceful degradation: AI is down but the request is valid.
+            // Return the raw clinical data with an "unavailable" flag so the
+            // user still has context — never a 500.
+            String fallback = "AI summary unavailable: " + ex.getMessage()
+                    + "\n\nThe AI service is temporarily unavailable. "
+                    + "Please try again later.";
+            history.setAiResponse(fallback);
+            history.setResponseStatus("AI_UNAVAILABLE");
+
+            aiPromptHistoryRepository.save(history);
+
+            return fallback;
 
         } catch (RuntimeException ex) {
 

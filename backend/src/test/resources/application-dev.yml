@@ -1,0 +1,16 @@
+# Test-only override (loaded when the "dev" profile is active, which every
+# @SpringBootTest uses). Gives each Spring test context its OWN in-memory H2
+# database instead of the shared `careflow_db`.
+#
+# Why: Spring caches application contexts per test-class configuration, and
+# every cached context stays alive for the whole surefire JVM. With a shared
+# `jdbc:h2:mem:careflow_db`, a background OutboxRelay from one context (default
+# poll interval 2s) can claim outbox rows that another context's test just
+# created, making Phase 2's manually-driven relay tests racy
+# (e.g. "expected: <FAILED> but was: <PENDING>").
+#
+# `${random.uuid}` is resolved once per context boot, so every context gets a
+# fresh database that Flyway migrates and seeds from scratch.
+spring:
+  datasource:
+    url: jdbc:h2:mem:careflow_${random.uuid};DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE

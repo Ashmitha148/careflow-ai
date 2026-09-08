@@ -6,6 +6,8 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.security.CustomUserDetailsService;
 import com.careflow.ai.security.JwtTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,25 +17,32 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;;
+
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider,
-                       CustomUserDetailsService userDetailsService) {
+                       CustomUserDetailsService userDetailsService,
+                       RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.userDetailsService = userDetailsService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -44,12 +53,13 @@ public class AuthService {
                 )
         );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = tokenProvider.generateToken(authentication);
-        String refreshToken = tokenProvider.generateRefreshToken(authentication);
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found after authentication"));
+
+        String refreshToken = refreshTokenService.createRefreshToken(user);
 
         return AuthResponse.builder()
                 .token(token)
@@ -89,9 +99,9 @@ public class AuthService {
                 )
         );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = tokenProvider.generateToken(authentication);
-        String refreshToken = tokenProvider.generateRefreshToken(authentication);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
 
         return AuthResponse.builder()
                 .token(token)
@@ -100,12 +110,17 @@ public class AuthService {
                 .build();
     }
 
-    /**
+        /**
      * Exchanges a valid, non-expired refresh token for a new access/refresh
      * pair. The refresh token itself is a JWT with a "type": "refresh" claim
      * that JwtTokenProvider rejects if presented as an access token, so a
      * leaked refresh token can only ever be used against this one endpoint.
+     *
+     * Rotation: the presented token is marked used and a new one is issued in
+     * the same token family. If the presented token has already been used
+     * (ReuseException), the entire family is revoked — a possible theft signal.
      */
+    @Transactional
     public AuthResponse refresh(RefreshRequest request) {
         String suppliedRefreshToken = request.getRefreshToken();
 
@@ -113,16 +128,22 @@ public class AuthService {
             throw new RuntimeException("Invalid or expired refresh token");
         }
 
-        String email = tokenProvider.getUsernameFromToken(suppliedRefreshToken);
-        User user = userRepository.findByEmail(email)
+        UUID userId = UUID.fromString(
+                tokenProvider.getUsernameFromToken(suppliedRefreshToken));
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found for refresh token"));
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities());
+        String newAccessToken = tokenProvider.generateTokenFromUser(user);
 
-        String newAccessToken = tokenProvider.generateToken(authentication);
-        String newRefreshToken = tokenProvider.generateRefreshToken(authentication);
+        String newRefreshToken;
+        try {
+            newRefreshToken = refreshTokenService.rotateRefreshToken(suppliedRefreshToken);
+                } catch (RefreshTokenReuseException ex) {
+            log.warn("Refresh token reuse detected for user {}: {}", userId, ex.getMessage());
+            throw new RuntimeException("Refresh token reuse detected. All sessions revoked.", ex);
+        } catch (RefreshTokenExpiredException ex) {
+            throw new RuntimeException("Refresh token expired", ex);
+        }
 
         return AuthResponse.builder()
                 .token(newAccessToken)

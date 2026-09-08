@@ -44,9 +44,58 @@ careflow:
   idempotency:
     ttl-hours: ${IDEMPOTENCY_TTL_HOURS:24}
 
+# Phase 4 — Resilience4j circuit breaker, retry, timeout, rate limiter for
+# external calls (Gemini, Cloudinary) and auth/AI endpoints.
+resilience4j:
+  circuitbreaker:
+    instances:
+      gemini:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+      cloudinary:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+  retry:
+    instances:
+      gemini:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      cloudinary:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    instances:
+      auth:
+        limit-for-period: ${RATE_LIMIT_AUTH:10}
+        limit-refresh-period: 1m
+        timeout: 1s
+      ai:
+        limit-for-period: ${RATE_LIMIT_AI:30}
+        limit-refresh-period: 1m
+        timeout: 1s
+  timelimiter:
+    instances:
+      gemini:
+        timeout-duration: 30s
+      cloudinary:
+        timeout-duration: 20s
+
 logging:
   level:
     org.hibernate.SQL_SLOW: WARN
+    com.careflow.ai.resilience: DEBUG
 
 ---
 # Development Profile - H2 In-Memory Database

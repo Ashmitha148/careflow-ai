@@ -1,6 +1,7 @@
 package com.careflow.ai.service;
 
-import com.cloudinary.Cloudinary;
+import com.careflow.ai.config.FileStorageUnavailableException;
+import com.careflow.ai.config.ResilientCloudinaryClient;
 import com.cloudinary.utils.ObjectUtils;
 import com.careflow.ai.entity.EventType;
 import com.careflow.ai.entity.FileAttachment;
@@ -24,7 +25,7 @@ public class FileAttachmentService {
     private final FileAttachmentRepository fileAttachmentRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
-    private final Cloudinary cloudinary;
+    private final ResilientCloudinaryClient cloudinary;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
 
@@ -32,7 +33,7 @@ public class FileAttachmentService {
             FileAttachmentRepository fileAttachmentRepository,
             PatientRepository patientRepository,
             UserRepository userRepository,
-            Cloudinary cloudinary,
+            ResilientCloudinaryClient cloudinary,
             TimelineService timelineService,
             AuditLogService auditLogService) {
         this.fileAttachmentRepository = fileAttachmentRepository;
@@ -69,7 +70,7 @@ public class FileAttachmentService {
                                 "User not found: " + uploadedByUserId));
 
         try {
-            Map<?, ?> result = cloudinary.uploader().upload(
+            Map<?, ?> result = cloudinary.upload(
                     file.getBytes(),
                     ObjectUtils.asMap(
                             "resource_type", "auto",
@@ -114,9 +115,11 @@ public class FileAttachmentService {
 
             return saved;
 
-        } catch (IOException e) {
+                } catch (IOException e) {
             throw new RuntimeException(
-                    "Failed to upload file to Cloudinary", e);
+                    "Failed to read file contents", e);
+        } catch (FileStorageUnavailableException e) {
+            throw new RuntimeException("Failed to upload file to Cloudinary", e);
         }
     }
 
@@ -149,7 +152,7 @@ public class FileAttachmentService {
             String publicId = extractPublicId(url);
 
             if (publicId != null && !publicId.isBlank()) {
-                cloudinary.uploader().destroy(
+                cloudinary.destroy(
                         publicId,
                         ObjectUtils.asMap("resource_type", "auto")
                 );
@@ -175,7 +178,7 @@ public class FileAttachmentService {
                     description
             );
 
-        } catch (IOException e) {
+                } catch (FileStorageUnavailableException e) {
             throw new RuntimeException(
                     "Failed to delete file from Cloudinary", e);
         }

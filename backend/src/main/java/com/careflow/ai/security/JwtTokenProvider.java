@@ -8,9 +8,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import com.careflow.ai.entity.User;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -37,9 +39,47 @@ public class JwtTokenProvider {
         return buildToken(userPrincipal, expirationMs, ACCESS_TOKEN_TYPE);
     }
 
-    public String generateRefreshToken(Authentication authentication) {
+        public String generateRefreshToken(Authentication authentication) {
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
         return buildToken(userPrincipal, refreshExpirationMs, REFRESH_TOKEN_TYPE);
+    }
+
+        /**
+     * Overload that builds a refresh token from a bare user id (for use by the
+     * RefreshTokenService rotation flow where we only have the user id from the
+     * token family, not a full Authentication object).
+     */
+    public String generateRefreshToken(String userId) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshExpirationMs);
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
+                .setId(UUID.randomUUID().toString())
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
+    }
+
+    /**
+     * Builds an access token directly from a User entity (for use after
+     * authentication without needing an Authentication object on the stack,
+     * e.g. in the refresh-token rotation flow).
+     */
+    public String generateTokenFromUser(User user) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMs);
+        return Jwts.builder()
+                .setSubject(user.getEmail())
+                .claim("userId", user.getId().toString())
+                .claim("role", user.getRole().name())
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
+                .setId(UUID.randomUUID().toString())
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
     }
 
     private String buildToken(CustomUserDetails userPrincipal, long ttlMs, String tokenType) {
@@ -51,6 +91,7 @@ public class JwtTokenProvider {
                 .claim("userId", userPrincipal.getId().toString())
                 .claim("role", userPrincipal.getUser().getRole().name())
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
+                .setId(UUID.randomUUID().toString())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key, SignatureAlgorithm.HS512)

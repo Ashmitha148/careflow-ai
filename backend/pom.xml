@@ -115,6 +115,45 @@
             <version>${cloudinary.version}</version>
         </dependency>
 
+
+        <!-- Resilience4j (Phase 4): circuit breaker, retry, timeout for external calls -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-core</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- Bucket4j (Phase 4): token-bucket rate limiting -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
+        <!-- Resilience4j sub-modules used directly by ResilientAiClient /
+             ResilientCloudinaryClient (explicit for clarity; also pulled transitively
+             by resilience4j-spring-boot3). -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-retry</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-timelimiter</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
         <!-- Lombok & Dev tools -->
         <dependency>
             <groupId>org.projectlombok</groupId>
