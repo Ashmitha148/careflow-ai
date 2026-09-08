@@ -47,6 +47,8 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     List<Patient> findByHospitalId(UUID hospitalId);
 
+    long countByHospital_Id(UUID hospitalId);
+
     @Query("""
             SELECT p FROM Patient p
             WHERE p.id IN :patientIds

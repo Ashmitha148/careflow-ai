@@ -5,13 +5,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.security.core.AuthenticationException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -65,6 +68,29 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 ex.getMessage());
+    }
+
+    /**
+     * Bean-validation failures (@Valid on @RequestBody) must surface as 400 with
+     * the offending field names. Without this handler they fall into the generic
+     * Exception catch-all and are wrongly reported as 500.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
+        List<String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .collect(Collectors.toList());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
+        body.put("message", "Validation failed");
+        body.put("fieldErrors", fieldErrors);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     @ExceptionHandler(Exception.class)

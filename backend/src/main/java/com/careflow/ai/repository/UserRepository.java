@@ -29,4 +29,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findFirstByRole(Role role);
 
     List<User> findByRole(Role role);
+
+    List<User> findByHospital_Id(UUID hospitalId);
+
+    long countByHospital_Id(UUID hospitalId);
 }
