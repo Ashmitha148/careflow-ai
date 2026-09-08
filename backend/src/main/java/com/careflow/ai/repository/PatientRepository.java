@@ -33,6 +33,20 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     @Query("SELECT p.id FROM Patient p WHERE p.assignedDoctor.id = :userId OR p.assignedNurse.id = :userId")
     List<UUID> findAccessibleIdsByAssignment(@Param("userId") UUID userId);
 
+    /** Hospital-scoped admin search (Phase 7 tenancy). */
+    @Query("""
+            SELECT p FROM Patient p
+            WHERE p.hospital.id = :hospitalId
+              AND (:query IS NULL OR :query = ''
+                 OR LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                 OR LOWER(p.mrn) LIKE LOWER(CONCAT('%', :query, '%')))
+            """)
+    Page<Patient> searchByHospitalId(@Param("hospitalId") UUID hospitalId,
+                                     @Param("query") String query,
+                                     Pageable pageable);
+
+    List<Patient> findByHospitalId(UUID hospitalId);
+
     @Query("""
             SELECT p FROM Patient p
             WHERE p.id IN :patientIds

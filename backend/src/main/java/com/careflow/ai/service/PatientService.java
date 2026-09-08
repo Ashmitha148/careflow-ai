@@ -3,6 +3,7 @@ package com.careflow.ai.service;
 import com.careflow.ai.dto.PatientDto.PatientResponse;
 import com.careflow.ai.dto.PatientDto.RegisterRequest;
 import com.careflow.ai.dto.PatientDto.UpdateRequest;
+import com.careflow.ai.entity.Hospital;
 import com.careflow.ai.entity.Patient;
 import com.careflow.ai.entity.PatientAccess;
 import com.careflow.ai.entity.Role;
@@ -50,6 +51,8 @@ public class PatientService {
     @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public PatientResponse register(RegisterRequest request, UUID actorUserId) {
+        User actor = resolveCurrentUser();
+
         Patient patient = Patient.builder()
                 .mrn(generateMrn())
                 .name(request.getName())
@@ -58,7 +61,13 @@ public class PatientService {
                 .contactInfo(request.getContactInfo())
                 .assignedDoctor(resolveUser(request.getAssignedDoctorId()))
                 .assignedNurse(resolveUser(request.getAssignedNurseId()))
+                .hospital(actor.getHospital())
                 .build();
+
+        // The patient lives in the actor's hospital, so every caregiver they
+        // reference must belong to the SAME hospital (Phase 7 tenancy).
+        ensureSameHospital(patient.getAssignedDoctor(), actor);
+        ensureSameHospital(patient.getAssignedNurse(), actor);
 
         patient = patientRepository.save(patient);
 
@@ -92,10 +101,14 @@ public class PatientService {
             patient.setContactInfo(request.getContactInfo());
         }
         if (request.getAssignedDoctorId() != null) {
-            patient.setAssignedDoctor(resolveUser(request.getAssignedDoctorId()));
+            User doctor = resolveUser(request.getAssignedDoctorId());
+            ensureSameHospital(doctor, resolveCurrentUser());
+            patient.setAssignedDoctor(doctor);
         }
         if (request.getAssignedNurseId() != null) {
-            patient.setAssignedNurse(resolveUser(request.getAssignedNurseId()));
+            User nurse = resolveUser(request.getAssignedNurseId());
+            ensureSameHospital(nurse, resolveCurrentUser());
+            patient.setAssignedNurse(nurse);
         }
 
         patient = patientRepository.save(patient);
@@ -124,6 +137,12 @@ public class PatientService {
     public List<PatientResponse> getMyPatients() {
         User actor = resolveCurrentUser();
         if (actor.getRole() == Role.ADMIN) {
+            // Tenancy (Phase 7): admins are scoped to their own hospital;
+            // unscoped admins (NULL hospital) keep seeing everything.
+            if (actor.getHospital() != null) {
+                return patientRepository.findByHospitalId(actor.getHospital().getId())
+                        .stream().map(this::toResponse).toList();
+            }
             return patientRepository.findAll().stream().map(this::toResponse).toList();
         }
         Set<UUID> accessibleIds = resolveAccessiblePatientIds(actor);
@@ -138,8 +157,14 @@ public class PatientService {
         String normalized = query == null ? "" : query.trim();
         User actor = resolveCurrentUser();
 
-        // Admins may search all patients.
+        // Admins may search all patients OF THEIR HOSPITAL (Phase 7 tenancy);
+        // unscoped admins (NULL hospital) keep seeing everything.
         if (actor.getRole() == Role.ADMIN) {
+            if (actor.getHospital() != null) {
+                return patientRepository
+                        .searchByHospitalId(actor.getHospital().getId(), normalized, pageable)
+                        .map(this::toResponse);
+            }
             return patientRepository.searchByNameOrMrn(normalized, pageable).map(this::toResponse);
         }
 
@@ -172,6 +197,12 @@ public class PatientService {
      * ADMIN, the assigned doctor/nurse, or an explicit patient_access row.
      */
     private void ensureAccess(User actor, Patient patient) {
+        // Tenancy boundary first (Phase 7): a user never reaches into another
+        // hospital, not even admins. NULL on either side = unscoped.
+        if (actor.getHospital() != null && patient.getHospital() != null
+                && !actor.getHospital().getId().equals(patient.getHospital().getId())) {
+            throw new RuntimeException("Access denied to patient: " + patient.getId());
+        }
         if (actor.getRole() == Role.ADMIN) {
             return;
         }
@@ -208,6 +239,23 @@ public class PatientService {
         return mrn;
     }
 
+    /**
+     * Throws when the referenced caregiver belongs to a different hospital than
+     * the actor (Phase 7 tenancy). Unscoped users/patients (NULL hospital) are
+     * exempt to keep legacy behaviour.
+     */
+    private void ensureSameHospital(User caregiver, User actor) {
+        if (caregiver == null || actor.getHospital() == null) {
+            return;
+        }
+        UUID caregiverHospitalId = caregiver.getHospital() != null
+                ? caregiver.getHospital().getId() : null;
+        if (!actor.getHospital().getId().equals(caregiverHospitalId)) {
+            throw new RuntimeException(
+                    "Caregiver belongs to a different hospital: " + caregiver.getEmail());
+        }
+    }
+
     private User resolveUser(UUID userId) {
         if (userId == null) {
             return null;
@@ -219,6 +267,7 @@ public class PatientService {
     private PatientResponse toResponse(Patient patient) {
         User doctor = patient.getAssignedDoctor();
         User nurse = patient.getAssignedNurse();
+        Hospital hospital = patient.getHospital();
         return PatientResponse.builder()
                 .id(patient.getId())
                 .mrn(patient.getMrn())
@@ -230,6 +279,8 @@ public class PatientService {
                 .assignedDoctorName(doctor != null ? doctor.getFullName() : null)
                 .assignedNurseId(nurse != null ? nurse.getId() : null)
                 .assignedNurseName(nurse != null ? nurse.getFullName() : null)
+                .hospitalId(hospital != null ? hospital.getId() : null)
+                .hospitalName(hospital != null ? hospital.getName() : null)
                 .createdAt(patient.getCreatedAt())
                 .build();
     }

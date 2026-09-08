@@ -38,6 +38,11 @@ public class Patient {
     @JoinColumn(name = "assigned_nurse_id")
     private User assignedNurse;
 
+    /** Owning hospital tenant (Phase 7). NULL = unscoped legacy patient. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hospital_id")
+    private Hospital hospital;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -51,7 +56,8 @@ public class Patient {
 
     public Patient(UUID id, String mrn, String name, LocalDate dob, String gender, 
                    String contactInfo, User assignedDoctor, User assignedNurse, 
-                   LocalDateTime createdAt, boolean remoteSupervisionEnabled,
+                   Hospital hospital, LocalDateTime createdAt,
+                   boolean remoteSupervisionEnabled,
                    boolean caregiverPhysicallyPresent) {
         this.id = id;
         this.mrn = mrn;
@@ -61,6 +67,7 @@ public class Patient {
         this.contactInfo = contactInfo;
         this.assignedDoctor = assignedDoctor;
         this.assignedNurse = assignedNurse;
+        this.hospital = hospital;
         this.createdAt = createdAt;
         this.remoteSupervisionEnabled = remoteSupervisionEnabled;
         this.caregiverPhysicallyPresent = caregiverPhysicallyPresent;
@@ -89,6 +96,9 @@ public class Patient {
 
     public User getAssignedNurse() { return assignedNurse; }
     public void setAssignedNurse(User assignedNurse) { this.assignedNurse = assignedNurse; }
+
+    public Hospital getHospital() { return hospital; }
+    public void setHospital(Hospital hospital) { this.hospital = hospital; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -123,6 +133,7 @@ public class Patient {
         private String contactInfo;
         private User assignedDoctor;
         private User assignedNurse;
+        private Hospital hospital;
         private LocalDateTime createdAt;
         private boolean remoteSupervisionEnabled;
         private boolean caregiverPhysicallyPresent;
@@ -137,6 +148,7 @@ public class Patient {
         public PatientBuilder contactInfo(String contactInfo) { this.contactInfo = contactInfo; return this; }
         public PatientBuilder assignedDoctor(User assignedDoctor) { this.assignedDoctor = assignedDoctor; return this; }
         public PatientBuilder assignedNurse(User assignedNurse) { this.assignedNurse = assignedNurse; return this; }
+        public PatientBuilder hospital(Hospital hospital) { this.hospital = hospital; return this; }
         public PatientBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public PatientBuilder remoteSupervisionEnabled(boolean remoteSupervisionEnabled) { 
             this.remoteSupervisionEnabled = remoteSupervisionEnabled; return this; 
@@ -146,8 +158,8 @@ public class Patient {
         }
 
         public Patient build() {
-            return new Patient(id, mrn, name, dob, gender, contactInfo, 
-                assignedDoctor, assignedNurse, createdAt, 
+            return new Patient(id, mrn, name, dob, gender, contactInfo,
+                assignedDoctor, assignedNurse, hospital, createdAt,
                 remoteSupervisionEnabled, caregiverPhysicallyPresent);
         }
     }

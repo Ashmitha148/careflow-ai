@@ -345,13 +345,16 @@ All demo accounts use password **`password123`**. Created by Flyway V2 and V5 mi
 
 **Why per-patient vital thresholds?** Clinical limits are not one-size-fits-all: a COPD patient's 90% SpO2 is their normal, and a brittle diabetic's glucose must be watched even though no global default exists. Doctors override the alert bounds per patient and vital type (`PUT /clinical/vitals/{patientId}/thresholds/{type}`, audited), the timeline's alert detail always names the rule that actually fired, and with no override the hardcoded clinical defaults apply unchanged. See [ADR 0004](docs/adr/0004-per-patient-vital-thresholds.md).
 
+**Why multi-hospital tenancy via a discriminator column?** Real deployments serve hospital networks where cross-facility isolation is a hard requirement. A shared schema with `hospital_id` on users and patients keeps one migration path and one connection pool; listings filter by tenant, `ensureAccess` applies the boundary before any assignment check, and patient creation inherits the creator's facility — a client can never pick the tenant. Seeded rows with NULL hospital stay visible to everyone, making the rollout zero-downtime. The security principal eagerly loads its hospital (`@EntityGraph`) because tenancy checks read it on a detached session. See [ADR 0005](docs/adr/0005-multi-hospital-tenancy.md).
+
 **Why push into the TanStack Query cache instead of refetching?** A socket event carries the new record; patching `queryClient.setQueryData` updates every mounted component instantly with zero extra HTTP load. Sockets that only trigger refetches would just duplicate the REST path.
 
 ---
 
 ## What's Next
 
-- Multi-hospital/tenant support
+- Mobile-responsive caregiver app for bedside charting
+- Hospital management UI (facility onboarding, tenant admin roles)
 
 ---
 

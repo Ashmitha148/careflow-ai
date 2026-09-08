@@ -28,6 +28,11 @@ public class User {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    /** Owning hospital tenant (Phase 7). NULL = unscoped legacy user. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hospital_id")
+    private Hospital hospital;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -57,6 +62,9 @@ public class User {
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public Hospital getHospital() { return hospital; }
+    public void setHospital(Hospital hospital) { this.hospital = hospital; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

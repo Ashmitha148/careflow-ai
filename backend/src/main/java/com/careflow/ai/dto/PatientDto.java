@@ -83,6 +83,8 @@ public class PatientDto {
         private String assignedDoctorName;
         private UUID assignedNurseId;
         private String assignedNurseName;
+        private UUID hospitalId;
+        private String hospitalName;
         private LocalDateTime createdAt;
 
         public PatientResponse() {}
@@ -117,6 +119,12 @@ public class PatientDto {
         public String getAssignedNurseName() { return assignedNurseName; }
         public void setAssignedNurseName(String assignedNurseName) { this.assignedNurseName = assignedNurseName; }
 
+        public UUID getHospitalId() { return hospitalId; }
+        public void setHospitalId(UUID hospitalId) { this.hospitalId = hospitalId; }
+
+        public String getHospitalName() { return hospitalName; }
+        public void setHospitalName(String hospitalName) { this.hospitalName = hospitalName; }
+
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -137,6 +145,8 @@ public class PatientDto {
             public PatientResponseBuilder assignedDoctorName(String assignedDoctorName) { response.setAssignedDoctorName(assignedDoctorName); return this; }
             public PatientResponseBuilder assignedNurseId(UUID assignedNurseId) { response.setAssignedNurseId(assignedNurseId); return this; }
             public PatientResponseBuilder assignedNurseName(String assignedNurseName) { response.setAssignedNurseName(assignedNurseName); return this; }
+            public PatientResponseBuilder hospitalId(UUID hospitalId) { response.setHospitalId(hospitalId); return this; }
+            public PatientResponseBuilder hospitalName(String hospitalName) { response.setHospitalName(hospitalName); return this; }
             public PatientResponseBuilder createdAt(LocalDateTime createdAt) { response.setCreatedAt(createdAt); return this; }
 
             public PatientResponse build() { return response; }
