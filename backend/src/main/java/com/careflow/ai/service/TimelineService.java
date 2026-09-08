@@ -42,6 +42,7 @@ public class TimelineService {
     private final PatientAccessRepository patientAccessRepository;
     private final AuditLogService auditLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
+    private final VitalThresholdService vitalThresholdService;
 
     public TimelineService(TimelineEventRepository timelineEventRepository,
                            PatientRepository patientRepository,
@@ -49,7 +50,8 @@ public class TimelineService {
                            NotificationRepository notificationRepository,
                            PatientAccessRepository patientAccessRepository,
                            AuditLogService auditLogService,
-                           RealtimeEventPublisher realtimeEventPublisher) {
+                           RealtimeEventPublisher realtimeEventPublisher,
+                           VitalThresholdService vitalThresholdService) {
         this.timelineEventRepository = timelineEventRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
@@ -57,6 +59,7 @@ public class TimelineService {
         this.patientAccessRepository = patientAccessRepository;
         this.auditLogService = auditLogService;
         this.realtimeEventPublisher = realtimeEventPublisher;
+        this.vitalThresholdService = vitalThresholdService;
     }
 
     /**
@@ -267,7 +270,8 @@ public class TimelineService {
         return CriticalAlertDetail.builder()
                 .vitalType(vitalType != null ? vitalType.name() : null)
                 .recordedValue(recordedValue)
-                .threshold(VitalService.describeThreshold(vitalType))
+                .threshold(vitalThresholdService.describeActiveThreshold(
+                        event.getPatient().getId(), vitalType))
                 .timestamp(createdAt)
                 .recordedById(recordedBy != null ? recordedBy.getId() : null)
                 .recordedByName(recordedBy != null ? recordedBy.getFullName() : null)

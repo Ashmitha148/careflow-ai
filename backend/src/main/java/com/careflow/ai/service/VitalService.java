@@ -11,6 +11,7 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.repository.VitalRepository;
+import com.careflow.ai.entity.VitalThreshold;
 import com.careflow.ai.dto.CursorPageResponse;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class VitalService {
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
+    private final VitalThresholdService vitalThresholdService;
 
     public VitalService(
             VitalRepository vitalRepository,
@@ -37,7 +39,8 @@ public class VitalService {
             NotificationRepository notificationRepository,
             TimelineService timelineService,
             AuditLogService auditLogService,
-            RealtimeEventPublisher realtimeEventPublisher) {
+            RealtimeEventPublisher realtimeEventPublisher,
+            VitalThresholdService vitalThresholdService) {
         this.vitalRepository = vitalRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
@@ -45,6 +48,7 @@ public class VitalService {
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
         this.realtimeEventPublisher = realtimeEventPublisher;
+        this.vitalThresholdService = vitalThresholdService;
     }
 
     @Transactional
@@ -120,6 +124,17 @@ public class VitalService {
 
         if (vital == null || vital.getType() == null || vital.getValue() == null) {
             return false;
+        }
+
+        // Per-patient override wins (Phase 5); fall back to the global
+        // clinical defaults when the patient has no configured threshold.
+        if (vital.getPatient() != null) {
+            VitalThreshold override = vitalThresholdService
+                    .findOverride(vital.getPatient().getId(), vital.getType())
+                    .orElse(null);
+            if (override != null) {
+                return vitalThresholdService.isCriticalWithOverride(vital, override);
+            }
         }
 
         String value = vital.getValue().trim();

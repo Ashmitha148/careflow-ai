@@ -343,6 +343,8 @@ All demo accounts use password **`password123`**. Created by Flyway V2 and V5 mi
 
 **Why circuit breakers, rate limits, and refresh-token rotation?** External AI calls fail — when Gemini is down, Resilience4j retries transient errors, then opens the circuit and fails fast so the UI degrades to "AI summary unavailable" instead of hanging. `/auth/*` and `/copilot/**` are token-bucket rate-limited per client IP to blunt credential stuffing. Refresh tokens rotate on every use, and replaying a used token is treated as theft: the entire token family is revoked (committed in an independent transaction so the revocation survives the deliberate rollback). See [ADR 0003](docs/adr/0003-resilience-and-session-security.md).
 
+**Why per-patient vital thresholds?** Clinical limits are not one-size-fits-all: a COPD patient's 90% SpO2 is their normal, and a brittle diabetic's glucose must be watched even though no global default exists. Doctors override the alert bounds per patient and vital type (`PUT /clinical/vitals/{patientId}/thresholds/{type}`, audited), the timeline's alert detail always names the rule that actually fired, and with no override the hardcoded clinical defaults apply unchanged. See [ADR 0004](docs/adr/0004-per-patient-vital-thresholds.md).
+
 **Why push into the TanStack Query cache instead of refetching?** A socket event carries the new record; patching `queryClient.setQueryData` updates every mounted component instantly with zero extra HTTP load. Sockets that only trigger refetches would just duplicate the REST path.
 
 ---
@@ -350,7 +352,6 @@ All demo accounts use password **`password123`**. Created by Flyway V2 and V5 mi
 ## What's Next
 
 - Mobile-responsive caregiver app
-- Configurable AI alert thresholds per patient
 - Multi-hospital/tenant support
 
 ---
