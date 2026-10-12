@@ -1,13 +1,39 @@
 server:
   port: ${PORT:8080}
+  shutdown: graceful
   servlet:
     context-path: /api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+
 
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: careflow-backend
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   jackson:
     serialization:
       fail-on-empty-beans: false
@@ -24,7 +50,11 @@ spring:
 
 careflow:
   jwt:
-    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    # No default at the top level: the prod profile requires JWT_SECRET to be
+    # explicitly provided and must fail to start without it. Only the dev
+    # profile (below) supplies a throwaway default, because local H2 dev data
+    # is not sensitive.
+    secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
   cors:
@@ -133,6 +163,12 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+# Dev-only JWT secret. The H2 dev database is throwaway and non-sensitive, so
+# a fake default keeps local runs zero-config. Never used by the prod profile.
+careflow:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-fake-secret-change-me-not-for-production-0123456789abcdef}
+
 ---
 # Production Profile - PostgreSQL Database
 spring:
@@ -163,3 +199,8 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+
+# Production must NEVER start with a fallback JWT secret - fail fast instead.
+careflow:
+  jwt:
+    secret: ${JWT_SECRET}

@@ -36,6 +36,10 @@ public class MedicationAdministration {
     @JoinColumn(name = "video_attachment_id")
     private FileAttachment verificationVideo;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     public MedicationAdministration() {}
 
     public MedicationAdministration(UUID id, Medication medication,

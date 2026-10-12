@@ -52,6 +52,10 @@ public class Patient {
     @Column(name = "caregiver_physically_present")
     private boolean caregiverPhysicallyPresent = false;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     public Patient() {}
 
     public Patient(UUID id, String mrn, String name, LocalDate dob, String gender, 

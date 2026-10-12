@@ -96,15 +96,14 @@ public class DashboardService {
     }
 
     private List<ActivityItem> resolveRecentActivity(Collection<UUID> patientIds) {
+        if (patientIds == null || patientIds.isEmpty()) {
+            return List.of();
+        }
         List<TimelineEvent> events = timelineEventRepository
-                .findByPatient_IdInOrderByCreatedAtDesc(patientIds);
+                .findByPatient_IdInOrderByCreatedAtDesc(patientIds, org.springframework.data.domain.PageRequest.of(0, RECENT_ACTIVITY_LIMIT));
 
         List<ActivityItem> items = new ArrayList<>();
-        int count = 0;
         for (TimelineEvent event : events) {
-            if (count >= RECENT_ACTIVITY_LIMIT) {
-                break;
-            }
             Patient patient = event.getPatient();
             items.add(ActivityItem.builder()
                     .id(event.getId())
@@ -114,7 +113,6 @@ public class DashboardService {
                     .description(event.getDescription())
                     .createdAt(event.getCreatedAt())
                     .build());
-            count++;
         }
         return items;
     }

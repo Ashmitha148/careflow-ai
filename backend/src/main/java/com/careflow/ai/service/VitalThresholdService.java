@@ -68,9 +68,13 @@ public class VitalThresholdService {
                 case OXYGEN:
                     return override.getMinValue() != null
                             && Double.parseDouble(value) < override.getMinValue();
-                case TEMPERATURE:
-                    return override.getMaxValue() != null
-                            && Double.parseDouble(stripUnit(value)) > override.getMaxValue();
+                case TEMPERATURE: {
+                    if (override.getMaxValue() == null) {
+                        return false;
+                    }
+                    double temp = parseTemperatureToFahrenheit(value);
+                    return temp > override.getMaxValue();
+                }
                 case SUGAR:
                     double sugar = Double.parseDouble(value);
                     return (override.getMinValue() != null && sugar < override.getMinValue())
@@ -250,5 +254,22 @@ public class VitalThresholdService {
             return upper.substring(0, upper.length() - 1).trim();
         }
         return value.trim();
+    }
+
+    /** Parses a temperature string (e.g. "38.5 C", "101.2 F", or "102") and normalizes to Fahrenheit. */
+    static double parseTemperatureToFahrenheit(String value) {
+        String upper = value.toUpperCase(Locale.ROOT).trim();
+        if (upper.endsWith("C")) {
+            double celsius = Double.parseDouble(upper.substring(0, upper.length() - 1).trim());
+            return (celsius * 9.0 / 5.0) + 32.0;
+        }
+        if (upper.endsWith("F")) {
+            return Double.parseDouble(upper.substring(0, upper.length() - 1).trim());
+        }
+        double val = Double.parseDouble(upper);
+        if (val <= 45.0) {
+            return (val * 9.0 / 5.0) + 32.0;
+        }
+        return val;
     }
 }

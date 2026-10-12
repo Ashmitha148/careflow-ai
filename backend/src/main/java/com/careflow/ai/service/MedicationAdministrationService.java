@@ -16,6 +16,7 @@ import com.careflow.ai.repository.MedicationRepository;
 import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.PatientAuthorizationService;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class MedicationAdministrationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final PatientAccessRepository patientAccessRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final FileAttachmentService fileAttachmentService;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
@@ -45,6 +47,7 @@ public class MedicationAdministrationService {
             NotificationRepository notificationRepository,
             UserRepository userRepository,
             PatientAccessRepository patientAccessRepository,
+            PatientAuthorizationService patientAuthorizationService,
             FileAttachmentService fileAttachmentService,
             TimelineService timelineService,
             AuditLogService auditLogService,
@@ -54,6 +57,7 @@ public class MedicationAdministrationService {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.patientAccessRepository = patientAccessRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.fileAttachmentService = fileAttachmentService;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
@@ -63,17 +67,16 @@ public class MedicationAdministrationService {
     @Transactional
     public MedicationAdministration recordAdministration(
             UUID medicationId,
-            UUID administeredById,
             AdminStatus status,
             String notes) {
+
+        ensurePatientAccessForMedication(medicationId);
+
+        User administeredBy = resolveCurrentUser();
 
         Medication medication = medicationRepository.findById(medicationId)
                 .orElseThrow(() -> new RuntimeException(
                         "Medication not found: " + medicationId));
-
-        User administeredBy = userRepository.findById(administeredById)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + administeredById));
 
         MedicationAdministration administration =
                 new MedicationAdministration();
@@ -104,11 +107,11 @@ public class MedicationAdministrationService {
                 patient.getId(),
                 EventType.MEDICATION_ADMINISTRATION,
                 description,
-                administeredById
+                administeredBy.getId()
         );
 
         auditLogService.log(
-                administeredById,
+                administeredBy.getId(),
                 "RECORD_MEDICATION_ADMINISTRATION",
                 "MedicationAdministration",
                 saved.getId(),
@@ -116,7 +119,7 @@ public class MedicationAdministrationService {
         );
 
         if (status == AdminStatus.MISSED) {
-            handleMissedMedication(medication, administeredById);
+            handleMissedMedication(medication, administeredBy.getId());
         }
 
         return saved;
@@ -125,10 +128,11 @@ public class MedicationAdministrationService {
     @Transactional
     public MedicationAdministration recordAdministrationWithVideoVerification(
             UUID medicationId,
-            UUID administeredById,
             AdminStatus status,
             String notes,
             MultipartFile videoFile) {
+
+        ensurePatientAccessForMedication(medicationId);
 
         Medication medication = medicationRepository.findById(medicationId)
                 .orElseThrow(() -> new RuntimeException(
@@ -137,14 +141,7 @@ public class MedicationAdministrationService {
         Patient patient = medication.getPatient();
         boolean requiresVerification = isRemoteVerificationRequired(patient, medication);
 
-        User administeredBy = userRepository.findById(administeredById)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + administeredById));
-
-        if (!isAuthorizedForPatient(administeredBy, patient)) {
-            throw new RuntimeException(
-                    "User " + administeredById + " is not authorized to verify medications for patient " + patient.getId());
-        }
+        User administeredBy = resolveCurrentUser();
 
         if (requiresVerification) {
             if (videoFile == null || videoFile.isEmpty()) {
@@ -164,7 +161,6 @@ public class MedicationAdministrationService {
         if (videoFile != null && !videoFile.isEmpty()) {
             verificationVideo = fileAttachmentService.uploadFile(
                     patient.getId(),
-                    administeredById,
                     videoFile
             );
             administration.setVerificationVideo(verificationVideo);
@@ -187,11 +183,11 @@ public class MedicationAdministrationService {
                 patient.getId(),
                 EventType.MEDICATION_ADMINISTRATION,
                 description,
-                administeredById
+                administeredBy.getId()
         );
 
         auditLogService.log(
-                administeredById,
+                administeredBy.getId(),
                 requiresVerification
                         ? "RECORD_MEDICATION_ADMINISTRATION_WITH_VIDEO"
                         : "RECORD_MEDICATION_ADMINISTRATION",
@@ -210,7 +206,7 @@ public class MedicationAdministrationService {
         }
 
         if (status == AdminStatus.MISSED) {
-            handleMissedMedication(medication, administeredById);
+            handleMissedMedication(medication, administeredBy.getId());
         }
 
         return saved;
@@ -222,24 +218,21 @@ public class MedicationAdministrationService {
                 && medication.isImportant();
     }
 
-    private boolean isAuthorizedForPatient(User user, Patient patient) {
-        if (user.getRole() == Role.ADMIN) {
-            return true;
-        }
+    private void ensurePatientAccessForMedication(UUID medicationId) {
+        Medication med = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Medication not found: " + medicationId));
+        patientAuthorizationService.ensurePatientAccess(med.getPatient().getId());
+    }
 
-        if (patient.getAssignedDoctor() != null
-                && patient.getAssignedDoctor().getId().equals(user.getId())) {
-            return true;
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
         }
-        if (patient.getAssignedNurse() != null
-                && patient.getAssignedNurse().getId().equals(user.getId())) {
-            return true;
-        }
-
-        List<PatientAccess> accessList = patientAccessRepository
-                .findByPatient_Id(patient.getId());
-        return accessList.stream()
-                .anyMatch(access -> access.getUser().getId().equals(user.getId()));
+        return details.getUser();
     }
 
     private void notifyAuthorizedUsersOfVerification(
@@ -324,14 +317,25 @@ public class MedicationAdministrationService {
             }
 
         } else if (missedCount == 2) {
-
-            User caregiver = userRepository
-                    .findFirstByRole(Role.CAREGIVER)
-                    .orElse(null);
-
-            if (caregiver != null) {
+            List<PatientAccess> accesses = patientAccessRepository.findByPatient_Id(patient.getId());
+            boolean notified = false;
+            for (PatientAccess access : accesses) {
+                if (access.getUser() != null && access.getUser().getRole() == Role.CAREGIVER) {
+                    createNotification(
+                            access.getUser(),
+                            "Medication escalation: "
+                                    + medication.getName()
+                                    + " for patient "
+                                    + patient.getName()
+                                    + " has been missed twice.",
+                            administeredById
+                    );
+                    notified = true;
+                }
+            }
+            if (!notified && patient.getAssignedNurse() != null) {
                 createNotification(
-                        caregiver,
+                        patient.getAssignedNurse(),
                         "Medication escalation: "
                                 + medication.getName()
                                 + " for patient "
@@ -340,7 +344,6 @@ public class MedicationAdministrationService {
                         administeredById
                 );
             }
-
         } else if (missedCount >= 3) {
 
             User doctor = patient.getAssignedDoctor();
@@ -389,40 +392,33 @@ public class MedicationAdministrationService {
     public List<MedicationAdministration> getMedicationHistory(
             UUID medicationId) {
 
+        ensurePatientAccessForMedication(medicationId);
+
         return administrationRepository
                 .findByMedication_IdOrderByAdministeredAtDesc(
                         medicationId);
     }
 
     @Transactional(readOnly = true)
-    public List<MedicationAdministration> getAdministrationsByUser(
-            UUID userId) {
-
+    public List<MedicationAdministration> getAdministrationsByUser() {
+        User actor = resolveCurrentUser();
         return administrationRepository
                 .findByAdministeredBy_IdOrderByAdministeredAtDesc(
-                        userId);
+                        actor.getId());
     }
 
     @Transactional(readOnly = true)
     public MedicationAdministration getAdministrationWithVideoCheck(
-            UUID administrationId,
-            UUID requestingUserId) {
+            UUID administrationId) {
 
         MedicationAdministration administration = administrationRepository
                 .findById(administrationId)
                 .orElseThrow(() -> new RuntimeException(
                         "Administration not found: " + administrationId));
 
-        User requestingUser = userRepository.findById(requestingUserId)
-                .orElseThrow(() -> new RuntimeException(
-                        "User not found: " + requestingUserId));
-
         Patient patient = administration.getMedication().getPatient();
 
-        if (!isAuthorizedForPatient(requestingUser, patient)) {
-            throw new RuntimeException(
-                    "Not authorized to view this medication administration");
-        }
+        patientAuthorizationService.ensurePatientAccess(patient.getId());
 
         return administration;
     }

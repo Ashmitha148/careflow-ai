@@ -45,6 +45,10 @@ public class Task {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     public Task() {}
 
     public UUID getId() { return id; }
