@@ -104,7 +104,6 @@ export default function ShiftHandoffsPage() {
       const res = await api.post("/shift-handoffs", null, {
         params: {
           patientId: selectedPatientId,
-          fromNurseId: user.id,
           toNurseId,
           notes,
           shiftDate: new Date().toISOString().slice(0, 10),
@@ -175,6 +174,24 @@ export default function ShiftHandoffsPage() {
             </div>
 
             <div className="space-y-3">
+              {nurses.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-[var(--text-muted)]">Receiving nurse</label>
+                  <select
+                    value={toNurseId}
+                    onChange={(e) => setToNurseId(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-teal-500/50"
+                  >
+                    <option value="">Select incoming nurse for shift...</option>
+                    {nurses.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.fullName || n.email} ({n.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-medium text-[var(--text-muted)]">Handoff notes</label>
                 <textarea
@@ -185,12 +202,18 @@ export default function ShiftHandoffsPage() {
                 />
               </div>
 
+              {createError && (
+                <p className="text-xs text-rose-400">{createError}</p>
+              )}
+
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="rounded-xl bg-teal-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-teal-400 transition"
+                  onClick={createHandoff}
+                  disabled={creating || !toNurseId || !notes.trim()}
+                  className="rounded-xl bg-teal-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-teal-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create handoff
+                  {creating ? "Creating..." : "Create handoff"}
                 </button>
               </div>
             </div>
@@ -205,11 +228,15 @@ export default function ShiftHandoffsPage() {
                     <Clock className="h-3 w-3" />
                     <span className="text-[10px]">{new Date(h.shiftDate).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-xs">{h.notes}</p>
                   {h.aiSummary && (
-                    <div className="mt-2 rounded-lg bg-teal-500/5 px-3 py-2">
-                      <p className="text-[10px] text-teal-400 font-medium">AI Summary</p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{h.aiSummary}</p>
+                    <div className="mt-2 rounded-lg bg-teal-500/5 px-3 py-2 border border-teal-500/20">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] text-teal-400 font-medium">AI Shift Summary</p>
+                        <span className="text-[9px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 font-medium">
+                          AI-generated • Requires clinician review
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 whitespace-pre-line">{h.aiSummary}</p>
                     </div>
                   )}
                 </div>

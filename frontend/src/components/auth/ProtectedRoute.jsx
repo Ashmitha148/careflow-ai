@@ -27,9 +27,9 @@ export default function ProtectedRoute() {
     }
   }
 
-  // CAREGIVER/READ_ONLY: only /family and /timeline
+  // CAREGIVER/READ_ONLY: can access /family, /timeline, and specific /patients/:id workspaces
   if (role === "CAREGIVER" || role === "READ_ONLY") {
-    if (path !== "/family" && path !== "/timeline") {
+    if (path !== "/family" && path !== "/timeline" && !path.startsWith("/patients/")) {
       return <Navigate to="/family" replace />;
     }
   }

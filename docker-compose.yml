@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: postgres:16
     container_name: careflow-postgres
     ports:
       - "5432:5432"
@@ -29,8 +29,10 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/careflow_db
       - SPRING_DATASOURCE_USERNAME=careflow_user
       - SPRING_DATASOURCE_PASSWORD=careflow_password
-      - JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-demo-key}
+      # Dev/demo compose file: JWT_SECRET must still never be a real secret.
+      # Generate your own with: openssl rand -hex 32
+      - JWT_SECRET=${JWT_SECRET:-change-me-before-any-real-deployment-0123456789abcdef}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-demo-key}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-demo-cloud}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-demo-key}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-demo-secret}
@@ -50,5 +52,41 @@ services:
     depends_on:
       - backend
 
+  # ---------------------------------------------------------------------------
+  # Observability stack (local dev only — not required in production)
+  # ---------------------------------------------------------------------------
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: careflow-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: careflow-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:

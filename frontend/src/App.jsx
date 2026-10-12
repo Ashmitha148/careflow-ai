@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 import RealtimeBridge from "./services/websocket/RealtimeBridge";
 import { queryClient } from "./services/queryClient";
+import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AppShell from "./components/layout/AppShell";
 import Login from "./pages/Login";
@@ -24,10 +25,11 @@ import VideoVerificationPage from "./pages/VideoVerificationPage";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <SocketProvider>
-          <RealtimeBridge />
+    <ErrorBoundary>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <SocketProvider>
+            <RealtimeBridge />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -65,5 +67,6 @@ export default function App() {
         </SocketProvider>
       </QueryClientProvider>
     </AuthProvider>
+  </ErrorBoundary>
   );
 }

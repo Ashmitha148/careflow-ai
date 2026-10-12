@@ -131,7 +131,6 @@ export default function VideoVerificationPage() {
 
     const formData = new FormData();
     formData.append("video", recordedBlob, "verification.webm");
-    formData.append("userId", user.id);
     formData.append("status", "GIVEN");
     formData.append(
       "notes",

@@ -42,7 +42,7 @@ export default function TimelineReplay({ patientId }) {
     if (!patientId || !user?.id) return;
     setSummaryLoading(true);
     setSummaryError(null);
-    getPatientSummary(patientId, user.id)
+    getPatientSummary(patientId)
       .then((text) => setSummary(text))
       .catch(() => setSummaryError("Copilot could not generate a summary right now."))
       .finally(() => setSummaryLoading(false));

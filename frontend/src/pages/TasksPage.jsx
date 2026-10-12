@@ -29,9 +29,9 @@ export default function TasksPage() {
   const handleAction = async (action, taskId) => {
     try {
       if (action === "start") {
-        await startTask(taskId, user.id);
+        await startTask(taskId);
       } else if (action === "complete") {
-        await completeTask(taskId, user.id);
+        await completeTask(taskId);
       }
       // Refresh
       const data = await getPendingTasksForNurse(user.id);

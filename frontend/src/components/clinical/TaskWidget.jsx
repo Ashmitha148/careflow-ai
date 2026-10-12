@@ -57,7 +57,6 @@ export default function TaskWidget({ patientId }) {
     try {
       await createTask({
         patientId,
-        doctorId: user.id,
         assignedNurseId,
         title,
         description,
@@ -66,9 +65,8 @@ export default function TaskWidget({ patientId }) {
       setDescription("");
       setAssignedNurseId("");
       setShowForm(false);
-      refresh();
     } catch {
-      setError({ message: "Could not create task" });
+      setMutationError({ message: "Could not create task" });
     } finally {
       setSubmitting(false);
     }
@@ -76,12 +74,12 @@ export default function TaskWidget({ patientId }) {
 
   async function handleAction(action, taskId) {
     try {
-      if (action === "start") await startTask(taskId, user.id);
-      if (action === "complete") await completeTask(taskId, user.id);
-      if (action === "cancel") await cancelTask(taskId, user.id);
+      if (action === "start") await startTask(taskId);
+      if (action === "complete") await completeTask(taskId);
+      if (action === "cancel") await cancelTask(taskId);
       refresh();
     } catch {
-      setError({ message: "Action failed" });
+      setMutationError({ message: "Action failed" });
     }
   }
 

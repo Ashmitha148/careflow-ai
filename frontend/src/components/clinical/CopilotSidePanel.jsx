@@ -1,17 +1,18 @@
-import { useState } from "react";
-import { Bot, Languages, MessageCircle, Sparkles, X } from "lucide-react";
+import { Bot, FileSearch, Languages, MessageCircle, Sparkles, X } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 import {
   askTimelineQuestion,
   getPatientSummary,
   getPlainLanguage,
+  getPatientPromptHistory,
 } from "../../services/copilotApi";
 
 const TABS = [
   { id: "qa", label: "Timeline Q&A", icon: MessageCircle },
   { id: "summary", label: "Summary", icon: Sparkles },
   { id: "plain", label: "Plain language", icon: Languages },
+  { id: "explain", label: "Explainability", icon: FileSearch },
 ];
 
 export default function CopilotSidePanel() {
@@ -29,6 +30,22 @@ export default function CopilotSidePanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [historyList, setHistoryList] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  async function loadHistory() {
+    if (!selectedPatientId) return;
+    setLoadingHistory(true);
+    try {
+      const data = await getPatientPromptHistory(selectedPatientId);
+      setHistoryList(data || []);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
   if (!isCopilotOpen) return null;
 
   function reset() {
@@ -41,7 +58,7 @@ export default function CopilotSidePanel() {
     reset();
     setLoading(true);
     try {
-      const answer = await askTimelineQuestion(selectedPatientId, user.id, question);
+      const answer = await askTimelineQuestion(selectedPatientId, question);
       setQaAnswer(answer);
     } catch {
       setError("Copilot couldn't answer that just now.");
@@ -55,7 +72,7 @@ export default function CopilotSidePanel() {
     reset();
     setLoading(true);
     try {
-      const text = await getPatientSummary(selectedPatientId, user.id);
+      const text = await getPatientSummary(selectedPatientId);
       setSummary(text);
     } catch {
       setError("Copilot couldn't generate a summary just now.");
@@ -70,7 +87,7 @@ export default function CopilotSidePanel() {
     reset();
     setLoading(true);
     try {
-      const text = await getPlainLanguage(selectedPatientId, user.id, plainInput);
+      const text = await getPlainLanguage(selectedPatientId, plainInput);
       setPlainOutput(text);
     } catch {
       setError("Copilot couldn't translate that just now.");
@@ -143,8 +160,13 @@ export default function CopilotSidePanel() {
               </button>
             </form>
             {qaAnswer && (
-              <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)]">
-                {qaAnswer}
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  AI-generated • Requires clinician review
+                </span>
+                <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)]">
+                  {qaAnswer}
+                </div>
               </div>
             )}
           </div>
@@ -162,8 +184,13 @@ export default function CopilotSidePanel() {
               {loading ? "Summarizing..." : "Generate summary"}
             </button>
             {summary && (
-              <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)]">
-                {summary}
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  AI-generated • Requires clinician review
+                </span>
+                <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)] whitespace-pre-line">
+                  {summary}
+                </div>
               </div>
             )}
           </div>
@@ -188,10 +215,68 @@ export default function CopilotSidePanel() {
               </button>
             </form>
             {plainOutput && (
-              <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)]">
-                {plainOutput}
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  AI-generated • Requires clinician review
+                </span>
+                <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 px-4 py-3 text-xs leading-6 text-[var(--text-secondary)]">
+                  {plainOutput}
+                </div>
               </div>
             )}
+          </div>
+        )}
+
+        {selectedPatientId && tab === "explain" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-[var(--text-primary)]">
+                Audit Trail & Grounding Context
+              </p>
+              <button
+                type="button"
+                onClick={loadHistory}
+                disabled={loadingHistory}
+                className="text-[11px] text-teal-400 hover:underline disabled:opacity-60"
+              >
+                {loadingHistory ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Inspect the exact timeline events retrieved and fed to Gemini as clinical context for each AI invocation.
+            </p>
+
+            {historyList.length === 0 && !loadingHistory && (
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 text-center text-xs text-[var(--text-muted)]">
+                No AI prompts recorded for this patient yet.
+              </div>
+            )}
+
+            {historyList.map((item) => (
+              <div key={item.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-teal-400">{item.featureName}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">
+                    {new Date(item.createdAt).toLocaleTimeString()}
+                  </span>
+                </div>
+                
+                <div>
+                  <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">Grounding Context (Timeline Events Used):</p>
+                  <pre className="mt-1 max-h-36 overflow-y-auto rounded-lg bg-black/40 p-2 font-mono text-[10px] text-slate-300 whitespace-pre-wrap leading-tight">
+                    {item.retrievedContext || "No timeline context attached"}
+                  </pre>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">AI Generated Output:</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-secondary)] leading-relaxed line-clamp-3">
+                    {item.aiResponse}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

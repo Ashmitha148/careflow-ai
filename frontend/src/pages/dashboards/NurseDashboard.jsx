@@ -49,8 +49,8 @@ export default function NurseDashboard() {
     try {
       const updated =
         action === "start"
-          ? await startTask(taskId, user.id)
-          : await completeTask(taskId, user.id);
+          ? await startTask(taskId)
+          : await completeTask(taskId);
       // The socket delivers the same task too; upsert is idempotent.
       queryClient.setQueryData(QK.nurseTasks(user.id), (old) =>
         upsertTask(old, updated),

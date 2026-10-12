@@ -6,7 +6,7 @@ export const useStore = create((set, get) => ({
   selectedEventType: null, // EventType filter
   isCopilotOpen: false,
   isMobileNavOpen: false, // off-canvas sidebar drawer on < lg screens
-  theme: 'dark',
+  theme: typeof window !== 'undefined' ? (localStorage.getItem('careflow_theme') || 'dark') : 'dark',
   unreadNotifications: 0,
   latestNotification: null, // most recent socket-delivered notification (for the toast)
   realtimeStatus: 'disconnected', // 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -24,6 +24,9 @@ export const useStore = create((set, get) => ({
   clearLatestNotification: () => set({ latestNotification: null }),
   toggleTheme: () => set((state) => {
     const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem('careflow_theme', nextTheme);
+    } catch {}
     if (nextTheme === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');

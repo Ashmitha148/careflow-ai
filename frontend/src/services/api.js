@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -68,6 +69,12 @@ api.interceptors.response.use(
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }
+    }
+
+    // Handle 409 Conflict (e.g. concurrent edits / optimistic locking version mismatch)
+    if (error.response?.status === 409) {
+      const conflictMsg = error.response.data?.message || "This record was updated by another team member. Please refresh to see the latest changes.";
+      error.conflictMessage = conflictMsg;
     }
 
     return Promise.reject(error);

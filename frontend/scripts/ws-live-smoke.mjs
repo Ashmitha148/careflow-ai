@@ -109,7 +109,7 @@ async function main() {
   // 4. THE definitive test: a clinical event pushed via REST must arrive as a
   //    MESSAGE frame on the subscribed topic — real-time push, not refetch.
   const value = `94.${Date.now() % 10}`;
-  const postRes = await fetch(`${BASE}/api/clinical/vitals/${PATIENT_ID}?recordedById=${DOCTOR_ID}`, {
+  const postRes = await fetch(`${BASE}/api/clinical/vitals/${PATIENT_ID}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ type: "OXYGEN", value }),

@@ -91,9 +91,12 @@ export default function Login() {
       await login(role.email, role.password);
       navigate(from, { replace: true });
     } catch (err) {
+      const isTimeout = err?.code === "ECONNABORTED" || err?.message?.includes("timeout") || !err?.response;
       setError(
         err?.response?.data?.message ||
-          `Could not log in as demo ${role.label}. Make sure the backend is running.`
+          (isTimeout
+            ? "The demo backend is waking up from idle (free tier). Please wait ~30 seconds and try again!"
+            : `Could not log in as demo ${role.label}. Please try again.`)
       );
       setShowDemo(false);
     } finally {

@@ -1,24 +1,24 @@
 import api from "./api";
 
-export async function createTask({ patientId, doctorId, assignedNurseId, title, description, dueAt }) {
+export async function createTask({ patientId, assignedNurseId, title, description, dueAt }) {
   const response = await api.post("/tasks", null, {
-    params: { patientId, doctorId, assignedNurseId, title, description, dueAt },
+    params: { patientId, assignedNurseId, title, description, dueAt },
   });
   return response.data;
 }
 
-export async function startTask(taskId, nurseId) {
-  const response = await api.post(`/tasks/${taskId}/start`, null, { params: { nurseId } });
+export async function startTask(taskId) {
+  const response = await api.post(`/tasks/${taskId}/start`);
   return response.data;
 }
 
-export async function completeTask(taskId, nurseId) {
-  const response = await api.post(`/tasks/${taskId}/complete`, null, { params: { nurseId } });
+export async function completeTask(taskId) {
+  const response = await api.post(`/tasks/${taskId}/complete`);
   return response.data;
 }
 
-export async function cancelTask(taskId, userId) {
-  const response = await api.post(`/tasks/${taskId}/cancel`, null, { params: { userId } });
+export async function cancelTask(taskId) {
+  const response = await api.post(`/tasks/${taskId}/cancel`);
   return response.data;
 }
 
