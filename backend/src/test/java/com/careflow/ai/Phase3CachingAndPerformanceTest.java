@@ -74,14 +74,7 @@ public class Phase3CachingAndPerformanceTest {
 
         // Mutating action triggers eviction
         User nurse = userRepository.findByEmail("nurse1@careflow.ai").orElseThrow();
-        taskService.createTask(
-                ELEANOR_ID,
-                doctor.getId(),
-                nurse.getId(),
-                "Phase 3 Test Task",
-                "Testing cache eviction",
-                null
-        );
+        taskService.createTask(ELEANOR_ID, nurse.getId(), "Phase 3 Test Task", null, null);
 
         // Eviction clears cache
         assertNull(cache.get(key));
