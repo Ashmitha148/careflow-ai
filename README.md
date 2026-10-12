@@ -157,10 +157,10 @@ cd frontend && npm install && npm run dev
 
 * [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Comprehensive technical architecture and data flow.
 * [`docs/API.md`](docs/API.md) — REST endpoint specifications, request/response models, and auth contracts.
+* [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) — Concurrency benchmarks, k6 load testing, and horizontal scaling.
 * [`SECURITY.md`](SECURITY.md) — Privacy-scoped access control model, token rotation, rate limits, and vulnerability reporting.
 * [`CONTRIBUTING.md`](CONTRIBUTING.md) — Engineering standards, commit conventions, and branch policies.
 * [`CHANGELOG.md`](CHANGELOG.md) — Detailed version and migration history.
-* [`INTERVIEW_NOTES.md`](INTERVIEW_NOTES.md) — 2-minute elevator pitch and 10 principal engineering interview questions with answers.
 * **Architecture Decision Records (ADRs)**:
   * [ADR 0001: WebSocket Topic Design & Authorization Model](docs/adr/0001-websocket-topic-design.md)
   * [ADR 0002: Transactional Outbox & Event-Driven Backbone](docs/adr/0002-caching-and-performance-strategy.md)
