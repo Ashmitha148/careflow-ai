@@ -13,6 +13,8 @@ import com.careflow.ai.repository.NotificationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.ShiftHandoffRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.security.PatientAuthorizationService;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import com.careflow.ai.config.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
@@ -35,6 +37,7 @@ public class ShiftHandoffService {
     private final AuditLogService auditLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
     private final OutboxService outboxService;
+    private final PatientAuthorizationService patientAuthorizationService;
 
     public ShiftHandoffService(
             ShiftHandoffRepository handoffRepository,
@@ -44,7 +47,8 @@ public class ShiftHandoffService {
             TimelineService timelineService,
             AuditLogService auditLogService,
             RealtimeEventPublisher realtimeEventPublisher,
-            OutboxService outboxService) {
+            OutboxService outboxService,
+            PatientAuthorizationService patientAuthorizationService) {
         this.handoffRepository = handoffRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
@@ -53,13 +57,13 @@ public class ShiftHandoffService {
         this.auditLogService = auditLogService;
         this.realtimeEventPublisher = realtimeEventPublisher;
         this.outboxService = outboxService;
+        this.patientAuthorizationService = patientAuthorizationService;
     }
 
     @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
     public ShiftHandoff createHandoff(
             UUID patientId,
-            UUID fromNurseId,
             UUID toNurseId,
             String notes,
             String pendingTasks,
@@ -68,13 +72,16 @@ public class ShiftHandoffService {
             String nextShiftInstructions,
             LocalDate shiftDate) {
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() ->
                         new RuntimeException("Patient not found: " + patientId));
 
-        User fromNurse = userRepository.findById(fromNurseId)
-                .orElseThrow(() ->
-                        new RuntimeException("Outgoing nurse not found: " + fromNurseId));
+        // The acting nurse is always the authenticated caller — never a
+        // client-supplied fromNurseId — so forged audit attribution is
+        // impossible.
+        User fromNurse = resolveCurrentUser();
 
         User toNurse = userRepository.findById(toNurseId)
                 .orElseThrow(() ->
@@ -113,7 +120,7 @@ public class ShiftHandoffService {
                 patientId,
                 EventType.SHIFT_HANDOFF,
                 description,
-                fromNurseId
+                fromNurse.getId()
         );
 
         Notification notification = new Notification();
@@ -143,7 +150,7 @@ public class ShiftHandoffService {
                 Map.of("handoffId", saved.getId()));
 
         auditLogService.log(
-                fromNurseId,
+                fromNurse.getId(),
                 "CREATE_SHIFT_HANDOFF",
                 "ShiftHandoff",
                 saved.getId(),
@@ -155,6 +162,7 @@ public class ShiftHandoffService {
 
     @Transactional(readOnly = true)
     public List<ShiftHandoff> getPatientHandoffs(UUID patientId) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
         return handoffRepository
                 .findByPatient_IdOrderByShiftDateDesc(patientId);
     }
@@ -164,12 +172,14 @@ public class ShiftHandoffService {
             UUID nurseId,
             LocalDate shiftDate) {
 
+        ensureSelfOrAdmin(nurseId);
         return handoffRepository
                 .findByToNurse_IdAndShiftDate(nurseId, shiftDate);
     }
 
     @Transactional(readOnly = true)
     public List<ShiftHandoff> getOutgoingHandoffs(UUID nurseId) {
+        ensureSelfOrAdmin(nurseId);
         return handoffRepository
                 .findByFromNurse_IdOrderByShiftDateDesc(nurseId);
     }
@@ -187,12 +197,42 @@ public class ShiftHandoffService {
                 .toList();
     }
 
+    /** Nurses may read only their own queues; admins may read any. */
+    private void ensureSelfOrAdmin(UUID nurseId) {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof CustomUserDetails actor)) {
+            throw new RuntimeException("Authentication required");
+        }
+        if (actor.getUser().getRole() == Role.ADMIN
+                || actor.getUser().getId().equals(nurseId)) {
+            return;
+        }
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Not authorized to view another nurse's handoffs");
+    }
+
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
+    }
+
     @Transactional(readOnly = true)
     public ShiftHandoff getHandoff(UUID handoffId) {
-        return handoffRepository.findById(handoffId)
+        ShiftHandoff handoff = handoffRepository.findById(handoffId)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Shift handoff not found: " + handoffId));
+        if (handoff.getPatient() != null) {
+            patientAuthorizationService.ensurePatientAccess(handoff.getPatient().getId());
+        }
+        return handoff;
     }
 
     @Transactional
@@ -200,10 +240,7 @@ public class ShiftHandoffService {
             UUID handoffId,
             String aiSummary) {
 
-        ShiftHandoff handoff = handoffRepository.findById(handoffId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Shift handoff not found: " + handoffId));
+        ShiftHandoff handoff = getHandoff(handoffId);
 
         // Manual (non-async) summary set: a completed lifecycle state.
         handoff.setAiSummary(aiSummary);

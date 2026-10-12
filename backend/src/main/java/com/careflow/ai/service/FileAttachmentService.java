@@ -10,6 +10,7 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.FileAttachmentRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.PatientAuthorizationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,7 @@ public class FileAttachmentService {
     private final FileAttachmentRepository fileAttachmentRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final ResilientCloudinaryClient cloudinary;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
@@ -33,12 +35,14 @@ public class FileAttachmentService {
             FileAttachmentRepository fileAttachmentRepository,
             PatientRepository patientRepository,
             UserRepository userRepository,
+            PatientAuthorizationService patientAuthorizationService,
             ResilientCloudinaryClient cloudinary,
             TimelineService timelineService,
             AuditLogService auditLogService) {
         this.fileAttachmentRepository = fileAttachmentRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.cloudinary = cloudinary;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
@@ -47,8 +51,9 @@ public class FileAttachmentService {
     @Transactional
     public FileAttachment uploadFile(
             UUID patientId,
-            UUID uploadedByUserId,
             MultipartFile file) {
+
+        patientAuthorizationService.ensurePatientAccess(patientId);
 
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be empty");
@@ -59,15 +64,12 @@ public class FileAttachmentService {
                     "File size cannot exceed 10 MB");
         }
 
+        User uploadedBy = resolveCurrentUser();
+
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Patient not found: " + patientId));
-
-        User uploadedBy = userRepository.findById(uploadedByUserId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "User not found: " + uploadedByUserId));
 
         try {
             Map<?, ?> result = cloudinary.upload(
@@ -102,11 +104,11 @@ public class FileAttachmentService {
                     patientId,
                     EventType.FILE_UPLOAD,
                     description,
-                    uploadedByUserId
+                    uploadedBy.getId()
             );
 
             auditLogService.log(
-                    uploadedByUserId,
+                    uploadedBy.getId(),
                     "UPLOAD_FILE",
                     "FileAttachment",
                     saved.getId(),
@@ -125,26 +127,36 @@ public class FileAttachmentService {
 
     @Transactional(readOnly = true)
     public List<FileAttachment> getPatientFiles(UUID patientId) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         return fileAttachmentRepository
                 .findByPatient_IdOrderByUploadedAtDesc(patientId);
     }
 
     @Transactional(readOnly = true)
     public FileAttachment getFile(UUID fileId) {
-        return fileAttachmentRepository.findById(fileId)
+        FileAttachment attachment = fileAttachmentRepository.findById(fileId)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "File attachment not found: " + fileId));
+
+        patientAuthorizationService.ensurePatientAccess(attachment.getPatient().getId());
+
+        return attachment;
     }
 
     @Transactional
-    public void deleteFile(UUID fileId, UUID deletedByUserId) {
+    public void deleteFile(UUID fileId) {
 
         FileAttachment attachment = fileAttachmentRepository
                 .findById(fileId)
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "File attachment not found: " + fileId));
+
+        patientAuthorizationService.ensurePatientAccess(attachment.getPatient().getId());
+
+        User deletedBy = resolveCurrentUser();
 
         try {
             String url = attachment.getCloudinaryUrl();
@@ -167,11 +179,11 @@ public class FileAttachmentService {
                     attachment.getPatient().getId(),
                     EventType.FILE_UPLOAD,
                     description,
-                    deletedByUserId
+                    deletedBy.getId()
             );
 
             auditLogService.log(
-                    deletedByUserId,
+                    deletedBy.getId(),
                     "DELETE_FILE",
                     "FileAttachment",
                     fileId,
@@ -182,6 +194,16 @@ public class FileAttachmentService {
             throw new RuntimeException(
                     "Failed to delete file from Cloudinary", e);
         }
+    }
+
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 
     private String extractPublicId(String url) {

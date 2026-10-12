@@ -11,6 +11,8 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.DiagnosisRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.security.PatientAuthorizationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,30 +27,39 @@ public class DiagnosisService {
     private final UserRepository userRepository;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
+    private final PatientAuthorizationService patientAuthorizationService;
 
     public DiagnosisService(DiagnosisRepository diagnosisRepository,
                             PatientRepository patientRepository,
                             UserRepository userRepository,
                             TimelineService timelineService,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService,
+                            PatientAuthorizationService patientAuthorizationService) {
         this.diagnosisRepository = diagnosisRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
+        this.patientAuthorizationService = patientAuthorizationService;
     }
 
     @Transactional
-    public DiagnosisResponse create(CreateRequest request, UUID doctorUserId) {
-        Patient patient = patientRepository.findById(request.getPatientId())
-                .orElseThrow(() -> new RuntimeException("Patient not found: " + request.getPatientId()));
+    public DiagnosisResponse create(CreateRequest request) {
+        patientAuthorizationService.ensurePatientAccess(request.getPatientId());
 
-        User doctor = userRepository.findById(doctorUserId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + doctorUserId));
+        // The diagnosing doctor is always the authenticated caller — never a
+        // client-supplied doctorUserId — so forged audit attribution is
+        // impossible.
+        User doctor = resolveCurrentUser();
 
         if (doctor.getRole() != Role.DOCTOR && doctor.getRole() != Role.ADMIN) {
-            throw new RuntimeException("Only doctors (or admins) may create diagnoses");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only doctors (or admins) may create diagnoses");
         }
+
+        Patient patient = patientRepository.findById(request.getPatientId())
+                .orElseThrow(() -> new RuntimeException(
+                        "Patient not found: " + request.getPatientId()));
 
         Diagnosis diagnosis = Diagnosis.builder()
                 .patient(patient)
@@ -68,11 +79,11 @@ public class DiagnosisService {
                 patient.getId(),
                 EventType.DIAGNOSIS,
                 description,
-                doctorUserId
+                doctor.getId()
         );
 
         auditLogService.log(
-                doctorUserId,
+                doctor.getId(),
                 "DIAGNOSIS_CREATED",
                 "Diagnosis",
                 diagnosis.getId(),
@@ -86,11 +97,13 @@ public class DiagnosisService {
     public DiagnosisResponse getById(UUID diagnosisId) {
         Diagnosis diagnosis = diagnosisRepository.findById(diagnosisId)
                 .orElseThrow(() -> new RuntimeException("Diagnosis not found: " + diagnosisId));
+        patientAuthorizationService.ensurePatientAccess(diagnosis.getPatient().getId());
         return toResponse(diagnosis, null);
     }
 
     @Transactional(readOnly = true)
     public List<DiagnosisResponse> getByPatient(UUID patientId) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
         if (!patientRepository.existsById(patientId)) {
             throw new RuntimeException("Patient not found: " + patientId);
         }
@@ -111,5 +124,15 @@ public class DiagnosisService {
                 .diagnosedAt(diagnosis.getDiagnosedAt())
                 .timelineEventId(timelineEventId)
                 .build();
+    }
+
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 }

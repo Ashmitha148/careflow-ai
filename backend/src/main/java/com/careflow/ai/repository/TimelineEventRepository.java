@@ -25,4 +25,6 @@ public interface TimelineEventRepository extends JpaRepository<TimelineEvent, UU
             UUID patientId, EventType eventType, LocalDateTime start, LocalDateTime end);
 
     List<TimelineEvent> findByPatient_IdInOrderByCreatedAtDesc(Collection<UUID> patientIds);
+
+    List<TimelineEvent> findByPatient_IdInOrderByCreatedAtDesc(Collection<UUID> patientIds, org.springframework.data.domain.Pageable pageable);
 }

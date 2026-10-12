@@ -32,6 +32,7 @@ public class OutboxRelay {
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
 
     private final OutboxEventRepository repository;
+    private final EventAuditRepository auditRepository;
     private final List<OutboxHandler> handlers;
     private final TransactionTemplate transactionTemplate;
     private final int batchSize;
@@ -40,12 +41,14 @@ public class OutboxRelay {
 
     public OutboxRelay(
             OutboxEventRepository repository,
+            EventAuditRepository auditRepository,
             List<OutboxHandler> handlers,
             PlatformTransactionManager transactionManager,
             @Value("${careflow.outbox.batch-size:50}") int batchSize,
             @Value("${careflow.outbox.max-attempts:5}") int maxAttempts,
             @Value("${careflow.outbox.backoff-base-ms:2000}") long backoffBaseMs) {
         this.repository = repository;
+        this.auditRepository = auditRepository;
         this.handlers = handlers;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.batchSize = batchSize;
@@ -79,6 +82,7 @@ public class OutboxRelay {
             event.setStatus(OutboxStatus.PROCESSED);
             event.setProcessedAt(LocalDateTime.now());
             repository.save(event);
+            recordAudit(event, EventAudit.STATUS_DISPATCHED);
         } catch (Exception e) {
             int attempts = event.getAttempts(); // already incremented by the claim
             if (attempts >= maxAttempts) {
@@ -87,6 +91,7 @@ public class OutboxRelay {
                         event.getId(), event.getEventType(), attempts, e);
                 event.setStatus(OutboxStatus.FAILED);
                 repository.save(event);
+                recordAudit(event, EventAudit.STATUS_FAILED);
             } else {
                 long backoffMs = backoffMs(attempts);
                 log.warn(
@@ -97,6 +102,28 @@ public class OutboxRelay {
                         LocalDateTime.now().plusNanos(backoffMs * 1_000_000));
                 repository.save(event);
             }
+        }
+    }
+
+    /**
+     * Writes one immutable {@link EventAudit} row for a terminal dispatch outcome.
+     * Failures here are non-fatal: the outbox row has already been updated, so
+     * delivery is not at risk — we just emit a warning for alerting.
+     */
+    private void recordAudit(OutboxEvent event, String status) {
+        try {
+            EventAudit audit = new EventAudit();
+            audit.setOutboxId(event.getId());
+            audit.setEventType(event.getEventType());
+            audit.setAggregateType(event.getAggregateType());
+            audit.setAggregateId(event.getAggregateId());
+            audit.setStatus(status);
+            audit.setAttempts(event.getAttempts());
+            audit.setCorrelationId(event.getCorrelationId());
+            auditRepository.save(audit);
+        } catch (Exception ex) {
+            log.warn("Failed to write event_audit row for outbox event {} — audit gap possible",
+                    event.getId(), ex);
         }
     }
 

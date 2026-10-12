@@ -35,7 +35,6 @@ public class ShiftHandoffController {
     @PreAuthorize("hasRole('NURSE')")
     public ResponseEntity<ShiftHandoff> createHandoff(
             @RequestParam UUID patientId,
-            @RequestParam UUID fromNurseId,
             @RequestParam UUID toNurseId,
             @RequestParam(required = false) String notes,
             @RequestParam(required = false) String pendingTasks,
@@ -45,7 +44,6 @@ public class ShiftHandoffController {
             @RequestParam LocalDate shiftDate) {
         ShiftHandoff handoff = shiftHandoffService.createHandoff(
                 patientId,
-                fromNurseId,
                 toNurseId,
                 notes,
                 pendingTasks,

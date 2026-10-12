@@ -13,11 +13,13 @@ import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.repository.VitalRepository;
 import com.careflow.ai.entity.VitalThreshold;
 import com.careflow.ai.dto.CursorPageResponse;
+import com.careflow.ai.security.PatientAuthorizationService;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -27,6 +29,7 @@ public class VitalService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
@@ -37,6 +40,7 @@ public class VitalService {
             PatientRepository patientRepository,
             UserRepository userRepository,
             NotificationRepository notificationRepository,
+            PatientAuthorizationService patientAuthorizationService,
             TimelineService timelineService,
             AuditLogService auditLogService,
             RealtimeEventPublisher realtimeEventPublisher,
@@ -45,6 +49,7 @@ public class VitalService {
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
         this.realtimeEventPublisher = realtimeEventPublisher;
@@ -52,13 +57,14 @@ public class VitalService {
     }
 
     @Transactional
-    public Vital recordVital(UUID patientId, UUID recordedById, Vital vital) {
+    public Vital recordVital(UUID patientId, Vital vital) {
+
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
+        User recordedBy = resolveCurrentUser();
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
-
-        User recordedBy = userRepository.findById(recordedById)
-                .orElseThrow(() -> new RuntimeException("User not found: " + recordedById));
 
         vital.setPatient(patient);
         vital.setRecordedBy(recordedBy);
@@ -86,7 +92,7 @@ public class VitalService {
                     patientId,
                     EventType.CRITICAL_ALERT,
                     description,
-                    recordedById
+                    recordedBy.getId()
             );
 
             createCriticalNotification(
@@ -105,12 +111,12 @@ public class VitalService {
                     patientId,
                     EventType.VITAL,
                     description,
-                    recordedById
+                    recordedBy.getId()
             );
         }
 
         auditLogService.log(
-                recordedById,
+                recordedBy.getId(),
                 "RECORD_VITAL",
                 "Vital",
                 savedVital.getId(),
@@ -118,6 +124,16 @@ public class VitalService {
         );
 
         return savedVital;
+    }
+
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 
     public boolean isCritical(Vital vital) {
@@ -235,6 +251,8 @@ public class VitalService {
     @Transactional(readOnly = true)
     public java.util.List<Vital> getPatientVitals(UUID patientId) {
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         if (!patientRepository.existsById(patientId)) {
             throw new RuntimeException("Patient not found: " + patientId);
         }
@@ -244,25 +262,36 @@ public class VitalService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<Vital> getPatientVitalsCursor(UUID patientId, String cursor, int limit) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         if (!patientRepository.existsById(patientId)) {
             throw new RuntimeException("Patient not found: " + patientId);
         }
         int pageSize = Math.min(Math.max(limit, 1), 100);
-        java.util.List<Vital> all = vitalRepository.findByPatient_IdOrderByRecordedAtDesc(patientId);
 
-        int startIndex = 0;
+        List<Vital> rawVitals;
         if (cursor != null && !cursor.isBlank()) {
-            for (int i = 0; i < all.size(); i++) {
-                if (all.get(i).getId().toString().equals(cursor.trim())) {
-                    startIndex = i + 1;
-                    break;
+            try {
+                UUID cursorId = UUID.fromString(cursor.trim());
+                Vital cursorVital = vitalRepository.findById(cursorId).orElse(null);
+                if (cursorVital != null) {
+                    rawVitals = vitalRepository.findByPatient_IdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                            patientId, cursorVital.getRecordedAt(), org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
+                } else {
+                    rawVitals = vitalRepository.findByPatient_IdOrderByRecordedAtDesc(
+                            patientId, org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
                 }
+            } catch (IllegalArgumentException e) {
+                rawVitals = vitalRepository.findByPatient_IdOrderByRecordedAtDesc(
+                        patientId, org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
             }
+        } else {
+            rawVitals = vitalRepository.findByPatient_IdOrderByRecordedAtDesc(
+                    patientId, org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
         }
 
-        int endIndex = Math.min(startIndex + pageSize, all.size());
-        java.util.List<Vital> items = startIndex < all.size() ? all.subList(startIndex, endIndex) : java.util.List.of();
-        boolean hasMore = endIndex < all.size();
+        boolean hasMore = rawVitals.size() > pageSize;
+        java.util.List<Vital> items = hasMore ? rawVitals.subList(0, pageSize) : rawVitals;
         String nextCursor = (hasMore && !items.isEmpty()) ? items.get(items.size() - 1).getId().toString() : null;
 
         return CursorPageResponse.<Vital>builder()
@@ -277,6 +306,8 @@ public class VitalService {
     public java.util.List<Vital> getPatientVitalsByType(
             UUID patientId,
             VitalType type) {
+
+        patientAuthorizationService.ensurePatientAccess(patientId);
 
         if (!patientRepository.existsById(patientId)) {
             throw new RuntimeException("Patient not found: " + patientId);

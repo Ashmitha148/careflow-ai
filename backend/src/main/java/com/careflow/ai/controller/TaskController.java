@@ -23,14 +23,12 @@ public class TaskController {
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
     public Task createTask(
             @RequestParam UUID patientId,
-            @RequestParam UUID doctorId,
             @RequestParam UUID assignedNurseId,
             @RequestParam String title,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime dueAt) {
         return taskService.createTask(
                 patientId,
-                doctorId,
                 assignedNurseId,
                 title,
                 description,
@@ -39,26 +37,20 @@ public class TaskController {
 
     @PostMapping("/{taskId}/start")
     @PreAuthorize("hasRole('NURSE')")
-    public Task startTask(
-            @PathVariable UUID taskId,
-            @RequestParam UUID nurseId) {
-        return taskService.startTask(taskId, nurseId);
+    public Task startTask(@PathVariable UUID taskId) {
+        return taskService.startTask(taskId);
     }
 
     @PostMapping("/{taskId}/complete")
     @PreAuthorize("hasRole('NURSE')")
-    public Task completeTask(
-            @PathVariable UUID taskId,
-            @RequestParam UUID nurseId) {
-        return taskService.completeTask(taskId, nurseId);
+    public Task completeTask(@PathVariable UUID taskId) {
+        return taskService.completeTask(taskId);
     }
 
     @PostMapping("/{taskId}/cancel")
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
-    public Task cancelTask(
-            @PathVariable UUID taskId,
-            @RequestParam UUID userId) {
-        return taskService.cancelTask(taskId, userId);
+    public Task cancelTask(@PathVariable UUID taskId) {
+        return taskService.cancelTask(taskId);
     }
 
     @GetMapping("/nurse/{nurseId}")

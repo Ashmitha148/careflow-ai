@@ -5,8 +5,12 @@ import com.careflow.ai.entity.AuditLog;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.AuditLogRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetails;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,14 @@ public class AuditLogService {
     public AuditLogService(AuditLogRepository auditLogRepository, UserRepository userRepository) {
         this.auditLogRepository = auditLogRepository;
         this.userRepository = userRepository;
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails details) {
+            return details.getUser();
+        }
+        return null;
     }
 
     /**
@@ -53,14 +65,49 @@ public class AuditLogService {
 
     @Transactional(readOnly = true)
     public Page<AuditLog> getAuditLogs(Pageable pageable) {
+        User actor = resolveCurrentUser();
+        if (actor != null && actor.getHospital() != null) {
+            return auditLogRepository.findByUser_Hospital_IdOrderByTimestampDesc(actor.getHospital().getId(), pageable);
+        }
         return auditLogRepository.findAllByOrderByTimestampDesc(pageable);
     }
 
     @Transactional(readOnly = true)
     public CursorPageResponse<AuditLog> getAuditLogsCursor(String cursor, int limit) {
         int pageSize = Math.min(Math.max(limit, 1), 100);
-        Page<AuditLog> page = auditLogRepository.findAllByOrderByTimestampDesc(
-                org.springframework.data.domain.PageRequest.of(0, pageSize + 1));
+        User actor = resolveCurrentUser();
+        Page<AuditLog> page;
+
+        java.time.LocalDateTime cursorTimestamp = null;
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                UUID cursorId = UUID.fromString(cursor.trim());
+                AuditLog cursorLog = auditLogRepository.findById(cursorId).orElse(null);
+                if (cursorLog != null) {
+                    cursorTimestamp = cursorLog.getTimestamp();
+                }
+            } catch (IllegalArgumentException e) {
+                // Ignore malformed cursor
+            }
+        }
+
+        if (actor != null && actor.getHospital() != null) {
+            if (cursorTimestamp != null) {
+                page = auditLogRepository.findByUser_Hospital_IdAndTimestampLessThanOrderByTimestampDesc(
+                        actor.getHospital().getId(), cursorTimestamp, PageRequest.of(0, pageSize + 1));
+            } else {
+                page = auditLogRepository.findByUser_Hospital_IdOrderByTimestampDesc(
+                        actor.getHospital().getId(), PageRequest.of(0, pageSize + 1));
+            }
+        } else {
+            if (cursorTimestamp != null) {
+                page = auditLogRepository.findByTimestampLessThanOrderByTimestampDesc(
+                        cursorTimestamp, PageRequest.of(0, pageSize + 1));
+            } else {
+                page = auditLogRepository.findAllByOrderByTimestampDesc(
+                        PageRequest.of(0, pageSize + 1));
+            }
+        }
         List<AuditLog> all = page.getContent();
         boolean hasMore = all.size() > pageSize;
         List<AuditLog> items = hasMore ? all.subList(0, pageSize) : all;

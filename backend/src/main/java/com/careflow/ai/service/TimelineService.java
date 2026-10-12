@@ -8,7 +8,6 @@ import com.careflow.ai.entity.EventType;
 import com.careflow.ai.entity.Notification;
 import com.careflow.ai.entity.NotificationType;
 import com.careflow.ai.entity.Patient;
-import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.TimelineEvent;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.entity.VitalType;
@@ -17,7 +16,7 @@ import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.TimelineEventRepository;
 import com.careflow.ai.repository.UserRepository;
-import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.security.PatientAuthorizationService;
 import com.careflow.ai.websocket.RealtimeEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +39,7 @@ public class TimelineService {
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
     private final PatientAccessRepository patientAccessRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final AuditLogService auditLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
     private final VitalThresholdService vitalThresholdService;
@@ -49,6 +49,7 @@ public class TimelineService {
                            UserRepository userRepository,
                            NotificationRepository notificationRepository,
                            PatientAccessRepository patientAccessRepository,
+                           PatientAuthorizationService patientAuthorizationService,
                            AuditLogService auditLogService,
                            RealtimeEventPublisher realtimeEventPublisher,
                            VitalThresholdService vitalThresholdService) {
@@ -57,6 +58,7 @@ public class TimelineService {
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
         this.patientAccessRepository = patientAccessRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.auditLogService = auditLogService;
         this.realtimeEventPublisher = realtimeEventPublisher;
         this.vitalThresholdService = vitalThresholdService;
@@ -75,18 +77,27 @@ public class TimelineService {
 
     @Transactional
     public TimelineEventResponse correctEvent(UUID correctsEventId,
-                                              String correctionDescription,
-                                              UUID createdByUserId) {
+                                              String correctionDescription) {
         TimelineEvent original = timelineEventRepository.findById(correctsEventId)
                 .orElseThrow(() -> new RuntimeException("Timeline event not found: " + correctsEventId));
+
+        User actor = resolveCurrentUser();
 
         return appendEvent(
                 original.getPatient().getId(),
                 original.getEventType(),
                 correctionDescription,
-                createdByUserId,
+                actor.getId(),
                 original
         );
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 
     @Transactional(readOnly = true)
@@ -97,7 +108,7 @@ public class TimelineService {
                                                                          String cursor,
                                                                          int limit) {
         ensurePatientExists(patientId);
-        ensurePatientAccess(patientId);
+        patientAuthorizationService.ensurePatientAccess(patientId);
 
         int pageSize = Math.min(Math.max(limit, 1), 100);
 
@@ -116,7 +127,16 @@ public class TimelineService {
             if (cursor != null && !cursor.isBlank()) {
                 try {
                     UUID cursorId = UUID.fromString(cursor.trim());
-                    predicates.add(cb.greaterThan(root.get("id"), cursorId));
+                    TimelineEvent cursorEvent = timelineEventRepository.findById(cursorId).orElse(null);
+                    if (cursorEvent != null) {
+                        predicates.add(cb.or(
+                                cb.greaterThan(root.get("createdAt"), cursorEvent.getCreatedAt()),
+                                cb.and(
+                                        cb.equal(root.get("createdAt"), cursorEvent.getCreatedAt()),
+                                        cb.greaterThan(root.get("id"), cursorId)
+                                )
+                        ));
+                    }
                 } catch (IllegalArgumentException e) {
                     // Ignore invalid cursor format gracefully
                 }
@@ -125,7 +145,7 @@ public class TimelineService {
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
 
-        List<TimelineEvent> rawEvents = timelineEventRepository.findAll(spec);
+        List<TimelineEvent> rawEvents = timelineEventRepository.findAll(spec, org.springframework.data.domain.PageRequest.of(0, pageSize + 1)).getContent();
         boolean hasMore = rawEvents.size() > pageSize;
         List<TimelineEvent> pageEvents = hasMore ? rawEvents.subList(0, pageSize) : rawEvents;
 
@@ -318,39 +338,4 @@ public class TimelineService {
         return text.substring(prefix.length()).trim();
     }
 
-    /**
-     * Enforces the same patient-level access rule used elsewhere: ADMIN, the
-     * assigned doctor/nurse, or an explicit patient_access row may read.
-     */
-    private void ensurePatientAccess(UUID patientId) {
-        User actor = resolveCurrentUser();
-        if (actor.getRole() == Role.ADMIN) {
-            return;
-        }
-
-        Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
-
-        UUID actorId = actor.getId();
-        User doctor = patient.getAssignedDoctor();
-        if (doctor != null && actorId.equals(doctor.getId())) {
-            return;
-        }
-        User nurse = patient.getAssignedNurse();
-        if (nurse != null && actorId.equals(nurse.getId())) {
-            return;
-        }
-        if (patientAccessRepository.existsByPatient_IdAndUser_Id(patientId, actorId)) {
-            return;
-        }
-        throw new RuntimeException("Access denied to patient: " + patientId);
-    }
-
-    private User resolveCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails details)) {
-            throw new RuntimeException("Authentication required");
-        }
-        return details.getUser();
-    }
 }

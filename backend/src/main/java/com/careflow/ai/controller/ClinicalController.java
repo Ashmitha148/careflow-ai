@@ -47,9 +47,8 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE')")
     public Vital recordVital(
             @PathVariable UUID patientId,
-            @RequestParam UUID recordedById,
             @RequestBody Vital vital) {
-        return vitalService.recordVital(patientId, recordedById, vital);
+        return vitalService.recordVital(patientId, vital);
     }
 
     @GetMapping("/vitals/{patientId}")
@@ -68,7 +67,6 @@ public class ClinicalController {
     @PostMapping("/medications")
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
     public Medication prescribeMedication(
-            @RequestParam UUID doctorUserId,
             @RequestParam UUID patientId,
             @RequestParam String name,
             @RequestParam String dosage,
@@ -78,7 +76,6 @@ public class ClinicalController {
             @RequestParam(required = false, defaultValue = "false") boolean important) {
         return medicationService.prescribeMedication(
                 patientId,
-                doctorUserId,
                 name,
                 dosage,
                 frequency,
@@ -104,22 +101,18 @@ public class ClinicalController {
     @PatchMapping("/medications/{medicationId}/discontinue")
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
     public Medication discontinueMedication(
-            @PathVariable UUID medicationId,
-            @RequestParam UUID userId) {
-        return medicationService.discontinueMedication(
-                medicationId, userId);
+            @PathVariable UUID medicationId) {
+        return medicationService.discontinueMedication(medicationId);
     }
 
     @PostMapping("/medications/{medicationId}/administrations")
     @PreAuthorize("hasAnyRole('NURSE','DOCTOR')")
     public MedicationAdministration recordAdministration(
             @PathVariable UUID medicationId,
-            @RequestParam UUID nurseId,
             @RequestParam com.careflow.ai.entity.AdminStatus status,
             @RequestParam(required = false) String notes) {
         return medicationAdministrationService.recordAdministration(
                 medicationId,
-                nurseId,
                 status,
                 notes);
     }
@@ -135,13 +128,11 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('NURSE','DOCTOR','ADMIN')")
     public MedicationAdministration recordAdministrationWithVideo(
             @PathVariable UUID medicationId,
-            @RequestParam UUID userId,
             @RequestParam com.careflow.ai.entity.AdminStatus status,
             @RequestParam(required = false) String notes,
             @RequestPart(value = "video", required = false) MultipartFile video) {
         return medicationAdministrationService.recordAdministrationWithVideoVerification(
                 medicationId,
-                userId,
                 status,
                 notes,
                 video);
@@ -172,25 +163,21 @@ public class ClinicalController {
     public Appointment scheduleAppointment(
             @RequestParam UUID patientId,
             @RequestParam UUID doctorId,
-            @RequestParam LocalDateTime scheduledAt,
-            @RequestParam UUID createdByUserId) {
+            @RequestParam LocalDateTime scheduledAt) {
         return appointmentService.scheduleAppointment(
                 patientId,
                 doctorId,
-                scheduledAt,
-                createdByUserId);
+                scheduledAt);
     }
 
     @PatchMapping("/appointments/{appointmentId}/status")
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
     public Appointment updateAppointmentStatus(
             @PathVariable UUID appointmentId,
-            @RequestParam AppointmentStatus status,
-            @RequestParam UUID updatedByUserId) {
+            @RequestParam AppointmentStatus status) {
         return appointmentService.updateStatus(
                 appointmentId,
-                status,
-                updatedByUserId);
+                status);
     }
 
     @GetMapping("/appointments/{patientId}")
@@ -206,11 +193,9 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE','ADMIN')")
     public FileAttachment uploadFile(
             @PathVariable UUID patientId,
-            @RequestParam UUID uploadedByUserId,
             @RequestPart("file") MultipartFile file) {
         return fileAttachmentService.uploadFile(
                 patientId,
-                uploadedByUserId,
                 file);
     }
 
@@ -229,11 +214,7 @@ public class ClinicalController {
 
     @DeleteMapping("/files/{fileId}")
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE','ADMIN')")
-    public void deleteFile(
-            @PathVariable UUID fileId,
-            @RequestParam UUID deletedByUserId) {
-        fileAttachmentService.deleteFile(
-                fileId,
-                deletedByUserId);
+    public void deleteFile(@PathVariable UUID fileId) {
+        fileAttachmentService.deleteFile(fileId);
     }
 }

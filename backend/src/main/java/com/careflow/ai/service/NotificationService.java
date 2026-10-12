@@ -53,18 +53,21 @@ public class NotificationService {
 
     @Transactional(readOnly = true)
     public List<Notification> getNotifications(UUID userId) {
+        ensureSelfOrAdmin(userId);
         return notificationRepository
                 .findByUser_IdOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(readOnly = true)
     public List<Notification> getUnreadNotifications(UUID userId) {
+        ensureSelfOrAdmin(userId);
         return notificationRepository
                 .findByUser_IdAndReadFalseOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(readOnly = true)
     public long getUnreadCount(UUID userId) {
+        ensureSelfOrAdmin(userId);
         return notificationRepository
                 .countByUser_IdAndReadFalse(userId);
     }
@@ -72,6 +75,7 @@ public class NotificationService {
     @Transactional
     public Notification markAsRead(UUID notificationId, UUID userId) {
 
+        ensureSelfOrAdmin(userId);
         Notification notification = notificationRepository
                 .findById(notificationId)
                 .orElseThrow(() ->
@@ -80,7 +84,7 @@ public class NotificationService {
 
         if (notification.getUser() == null
                 || !notification.getUser().getId().equals(userId)) {
-            throw new IllegalStateException(
+            throw new org.springframework.security.access.AccessDeniedException(
                     "You can only modify your own notifications");
         }
 
@@ -92,6 +96,7 @@ public class NotificationService {
     @Transactional
     public int markAllAsRead(UUID userId) {
 
+        ensureSelfOrAdmin(userId);
         List<Notification> notifications =
                 notificationRepository
                         .findByUser_IdAndReadFalseOrderByCreatedAtDesc(userId);
@@ -103,5 +108,21 @@ public class NotificationService {
         notificationRepository.saveAll(notifications);
 
         return notifications.size();
+    }
+
+    /** Users may read and mutate only their own notifications; admins may act for any. */
+    private void ensureSelfOrAdmin(UUID userId) {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails actor)) {
+            throw new RuntimeException("Authentication required");
+        }
+        if (actor.getUser().getRole() == com.careflow.ai.entity.Role.ADMIN
+                || actor.getUser().getId().equals(userId)) {
+            return;
+        }
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Not authorized to access another user's notifications");
     }
 }

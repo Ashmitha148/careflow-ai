@@ -14,6 +14,11 @@ public interface VitalRepository extends JpaRepository<Vital, UUID> {
 
     List<Vital> findByPatient_IdOrderByRecordedAtDesc(UUID patientId);
 
+    List<Vital> findByPatient_IdOrderByRecordedAtDesc(UUID patientId, org.springframework.data.domain.Pageable pageable);
+ 
+    List<Vital> findByPatient_IdAndRecordedAtLessThanOrderByRecordedAtDesc(
+            UUID patientId, LocalDateTime recordedAt, org.springframework.data.domain.Pageable pageable);
+
     List<Vital> findByPatient_IdAndTypeOrderByRecordedAtDesc(UUID patientId, VitalType type);
 
     List<Vital> findByPatient_IdAndRecordedAtBetweenOrderByRecordedAtAsc(

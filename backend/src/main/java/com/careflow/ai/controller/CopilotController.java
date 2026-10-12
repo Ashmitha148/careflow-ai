@@ -22,26 +22,23 @@ public class CopilotController {
     @PreAuthorize("isAuthenticated()")
     public String timelineQuestion(
             @RequestParam UUID patientId,
-            @RequestParam UUID userId,
             @RequestBody String question) {
-        return copilotService.timelineQuestion(patientId, userId, question);
+        return copilotService.timelineQuestion(patientId, question);
     }
 
     @PostMapping("/patient-summary")
     @PreAuthorize("isAuthenticated()")
     public String patientSummary(
-            @RequestParam UUID patientId,
-            @RequestParam UUID userId) {
-        return copilotService.patientSummary(patientId, userId);
+            @RequestParam UUID patientId) {
+        return copilotService.patientSummary(patientId);
     }
 
     @PostMapping("/plain-language")
     @PreAuthorize("isAuthenticated()")
     public String plainLanguage(
             @RequestParam UUID patientId,
-            @RequestParam UUID userId,
             @RequestBody String text) {
-        return copilotService.plainLanguage(patientId, userId, text);
+        return copilotService.plainLanguage(patientId, text);
     }
 
     @GetMapping("/patient/{patientId}/history")

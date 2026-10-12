@@ -68,13 +68,11 @@ public class TimelineController {
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE','ADMIN')")
     public TimelineEventResponse correctEvent(
             @PathVariable UUID eventId,
-            @RequestParam String correctionDescription,
-            @RequestParam UUID createdByUserId) {
+            @RequestParam String correctionDescription) {
 
         return timelineService.correctEvent(
                 eventId,
-                correctionDescription,
-                createdByUserId
+                correctionDescription
         );
     }
 }

@@ -8,6 +8,7 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.AppointmentRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.PatientAuthorizationService;
 import com.careflow.ai.config.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
 
@@ -30,11 +32,13 @@ public class AppointmentService {
             AppointmentRepository appointmentRepository,
             PatientRepository patientRepository,
             UserRepository userRepository,
+            PatientAuthorizationService patientAuthorizationService,
             TimelineService timelineService,
             AuditLogService auditLogService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
     }
@@ -44,8 +48,11 @@ public class AppointmentService {
     public Appointment scheduleAppointment(
             UUID patientId,
             UUID doctorId,
-            LocalDateTime scheduledAt,
-            UUID createdByUserId) {
+            LocalDateTime scheduledAt) {
+
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
+        User createdBy = resolveCurrentUser();
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() ->
@@ -73,11 +80,11 @@ public class AppointmentService {
                 patientId,
                 EventType.APPOINTMENT,
                 description,
-                createdByUserId
+                createdBy.getId()
         );
 
         auditLogService.log(
-                createdByUserId,
+                createdBy.getId(),
                 "SCHEDULE_APPOINTMENT",
                 "Appointment",
                 saved.getId(),
@@ -91,8 +98,11 @@ public class AppointmentService {
     @Transactional
     public Appointment updateStatus(
             UUID appointmentId,
-            AppointmentStatus status,
-            UUID updatedByUserId) {
+            AppointmentStatus status) {
+
+        ensurePatientAccessForAppointment(appointmentId);
+
+        User updatedBy = resolveCurrentUser();
 
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() ->
@@ -110,11 +120,11 @@ public class AppointmentService {
                 saved.getPatient().getId(),
                 EventType.APPOINTMENT,
                 description,
-                updatedByUserId
+                updatedBy.getId()
         );
 
         auditLogService.log(
-                updatedByUserId,
+                updatedBy.getId(),
                 "UPDATE_APPOINTMENT_STATUS",
                 "Appointment",
                 saved.getId(),
@@ -124,8 +134,20 @@ public class AppointmentService {
         return saved;
     }
 
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
+    }
+
     @Transactional(readOnly = true)
     public Appointment getAppointment(UUID appointmentId) {
+        ensurePatientAccessForAppointment(appointmentId);
+
         return appointmentRepository.findById(appointmentId)
                 .orElseThrow(() ->
                         new RuntimeException(
@@ -134,18 +156,28 @@ public class AppointmentService {
 
     @Transactional(readOnly = true)
     public List<Appointment> getPatientAppointments(UUID patientId) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         return appointmentRepository
                 .findByPatient_IdOrderByScheduledAtDesc(patientId);
     }
 
+    private void ensurePatientAccessForAppointment(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Appointment not found: " + appointmentId));
+        patientAuthorizationService.ensurePatientAccess(appointment.getPatient().getId());
+    }
+
     @Transactional(readOnly = true)
     public List<Appointment> getDoctorAppointments(
-            UUID doctorId,
             AppointmentStatus status) {
 
+        User actor = resolveCurrentUser();
         return appointmentRepository
                 .findByDoctor_IdAndStatusOrderByScheduledAtAsc(
-                        doctorId,
+                        actor.getId(),
                         status
                 );
     }

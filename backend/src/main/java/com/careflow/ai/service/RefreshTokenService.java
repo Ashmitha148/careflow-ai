@@ -47,7 +47,7 @@ public class RefreshTokenService {
      */
     private final TransactionTemplate requiresNewTx;
 
-    @Value("${app.jwt.refresh-expiration:604800000}")
+    @Value("${careflow.jwt.refresh-expiration-ms:604800000}")
     private long refreshExpirationMs;
 
     public RefreshTokenService(RefreshTokenRepository tokenRepository,
@@ -121,9 +121,7 @@ public class RefreshTokenService {
 
     @Transactional
     public void revokeAllUserFamilies(UUID userId) {
-        familyRepository.findAll().stream()
-                .filter(f -> f.getUserId().equals(userId) && !f.isRevoked())
-                .forEach(f -> familyRepository.revokeFamily(f.getId()));
+        familyRepository.revokeAllUserFamilies(userId);
     }
 
     private String issueTokenInFamily(RefreshTokenFamily family) {

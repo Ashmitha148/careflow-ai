@@ -5,13 +5,14 @@ import com.careflow.ai.dto.PatientDto.RegisterRequest;
 import com.careflow.ai.dto.PatientDto.UpdateRequest;
 import com.careflow.ai.entity.Hospital;
 import com.careflow.ai.entity.Patient;
-import com.careflow.ai.entity.PatientAccess;
 import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.User;
-import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.PatientRepository;
+import com.careflow.ai.repository.PatientAccessRepository;
 import com.careflow.ai.repository.UserRepository;
 import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.security.PatientAuthorizationService;
+import com.careflow.ai.entity.PatientAccess;
 import com.careflow.ai.config.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
@@ -37,20 +38,23 @@ public class PatientService {
     private final UserRepository userRepository;
     private final PatientAccessRepository patientAccessRepository;
     private final AuditLogService auditLogService;
+    private final PatientAuthorizationService patientAuthorizationService;
 
     public PatientService(PatientRepository patientRepository,
                           UserRepository userRepository,
                           PatientAccessRepository patientAccessRepository,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          PatientAuthorizationService patientAuthorizationService) {
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.patientAccessRepository = patientAccessRepository;
         this.auditLogService = auditLogService;
+        this.patientAuthorizationService = patientAuthorizationService;
     }
 
     @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
-    public PatientResponse register(RegisterRequest request, UUID actorUserId) {
+    public PatientResponse register(RegisterRequest request) {
         User actor = resolveCurrentUser();
 
         Patient patient = Patient.builder()
@@ -72,7 +76,7 @@ public class PatientService {
         patient = patientRepository.save(patient);
 
         auditLogService.log(
-                actorUserId,
+                actor.getId(),
                 "PATIENT_REGISTERED",
                 "Patient",
                 patient.getId(),
@@ -84,7 +88,12 @@ public class PatientService {
 
     @CacheEvict(value = CacheConfig.DASHBOARD_SUMMARY_CACHE, allEntries = true)
     @Transactional
-    public PatientResponse update(UUID patientId, UpdateRequest request, UUID actorUserId) {
+    public PatientResponse update(UUID patientId, UpdateRequest request) {
+        // Phase 1.1: authorization is enforced before any field mutation.
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
+        User actor = resolveCurrentUser();
+
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
 
@@ -102,19 +111,19 @@ public class PatientService {
         }
         if (request.getAssignedDoctorId() != null) {
             User doctor = resolveUser(request.getAssignedDoctorId());
-            ensureSameHospital(doctor, resolveCurrentUser());
+            ensureSameHospital(doctor, actor);
             patient.setAssignedDoctor(doctor);
         }
         if (request.getAssignedNurseId() != null) {
             User nurse = resolveUser(request.getAssignedNurseId());
-            ensureSameHospital(nurse, resolveCurrentUser());
+            ensureSameHospital(nurse, actor);
             patient.setAssignedNurse(nurse);
         }
 
         patient = patientRepository.save(patient);
 
         auditLogService.log(
-                actorUserId,
+                actor.getId(),
                 "PATIENT_UPDATED",
                 "Patient",
                 patient.getId(),
@@ -126,10 +135,11 @@ public class PatientService {
 
     @Transactional(readOnly = true)
     public PatientResponse getById(UUID patientId) {
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
-        User actor = resolveCurrentUser();
-        ensureAccess(actor, patient);
+
         return toResponse(patient);
     }
 
@@ -190,35 +200,6 @@ public class PatientService {
             }
         }
         return ids;
-    }
-
-    /**
-     * Throws if the given actor cannot read this patient. Access is granted for
-     * ADMIN, the assigned doctor/nurse, or an explicit patient_access row.
-     */
-    private void ensureAccess(User actor, Patient patient) {
-        // Tenancy boundary first (Phase 7): a user never reaches into another
-        // hospital, not even admins. NULL on either side = unscoped.
-        if (actor.getHospital() != null && patient.getHospital() != null
-                && !actor.getHospital().getId().equals(patient.getHospital().getId())) {
-            throw new RuntimeException("Access denied to patient: " + patient.getId());
-        }
-        if (actor.getRole() == Role.ADMIN) {
-            return;
-        }
-        UUID actorId = actor.getId();
-        User doctor = patient.getAssignedDoctor();
-        if (doctor != null && actorId.equals(doctor.getId())) {
-            return;
-        }
-        User nurse = patient.getAssignedNurse();
-        if (nurse != null && actorId.equals(nurse.getId())) {
-            return;
-        }
-        if (patientAccessRepository.existsByPatient_IdAndUser_Id(patient.getId(), actorId)) {
-            return;
-        }
-        throw new RuntimeException("Access denied to patient: " + patient.getId());
     }
 
     private User resolveCurrentUser() {

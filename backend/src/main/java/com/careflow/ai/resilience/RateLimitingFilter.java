@@ -79,9 +79,9 @@ public class RateLimitingFilter implements Filter {
         Bucket bucket = null;
 
         if ("POST".equals(method)
-                && (path.endsWith("/auth/login") || path.endsWith("/auth/refresh"))) {
+                && (path.endsWith("/auth/login") || path.endsWith("/auth/refresh") || path.endsWith("/auth/register"))) {
             bucket = authBuckets.computeIfAbsent(ip, this::authBucket);
-        } else if (path.contains("/copilot/") || path.contains("/ai/")) {
+        } else if ("POST".equals(method) && (path.contains("/copilot/") || path.contains("/ai/"))) {
             bucket = aiBuckets.computeIfAbsent(ip, this::aiBucket);
         }
 
@@ -90,7 +90,7 @@ public class RateLimitingFilter implements Filter {
             httpResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             httpResponse.setContentType("application/json");
             httpResponse.getWriter().write(
-                    "{\"error\":\"Rate limit exceeded. Please try again later.\"}");
+                    "{\"timestamp\":\"" + java.time.LocalDateTime.now() + "\",\"status\":429,\"code\":\"RATE_LIMIT_EXCEEDED\",\"message\":\"Rate limit exceeded. Please try again later.\"}");
             return;
         }
 
@@ -113,10 +113,23 @@ public class RateLimitingFilter implements Filter {
                 .build();
     }
 
+    /**
+     * Resolves client IP for rate limiting.
+     *
+     * <p>Note on proxy trust: X-Forwarded-For is extracted for deployment behind trusted proxies (Vercel/Render).
+     * In direct-exposure deployments, X-Forwarded-For can be spoofed; fallback to getRemoteAddr() ensures
+     * reliable IP detection.
+     *
+     * <p>Note on horizontal scaling: Buckets are per-instance in-memory via ConcurrentHashMap.
+     * A Redis-backed Bucket4j ProxyManager would be the next step for shared cluster rate limits across instances.
+     */
     private String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isEmpty()) {
-            return forwarded.split(",")[0].trim();
+        if (forwarded != null && !forwarded.isBlank()) {
+            String firstIp = forwarded.split(",")[0].trim();
+            if (!firstIp.isEmpty()) {
+                return firstIp;
+            }
         }
         return request.getRemoteAddr();
     }

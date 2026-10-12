@@ -8,6 +8,7 @@ import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.MedicationRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.PatientAuthorizationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ public class MedicationService {
     private final MedicationRepository medicationRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final TimelineService timelineService;
     private final AuditLogService auditLogService;
 
@@ -28,11 +30,13 @@ public class MedicationService {
             MedicationRepository medicationRepository,
             PatientRepository patientRepository,
             UserRepository userRepository,
+            PatientAuthorizationService patientAuthorizationService,
             TimelineService timelineService,
             AuditLogService auditLogService) {
         this.medicationRepository = medicationRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.timelineService = timelineService;
         this.auditLogService = auditLogService;
     }
@@ -40,14 +44,20 @@ public class MedicationService {
     @Transactional
     public Medication prescribeMedication(
             UUID patientId,
-            UUID doctorId,
             String name,
             String dosage,
             String frequency,
             LocalDate startDate,
             LocalDate endDate) {
-        return prescribeMedication(patientId, doctorId, name, dosage, frequency,
+        return prescribeMedication(patientId, name, dosage, frequency,
                 startDate, endDate, false);
+    }
+
+    private void ensurePatientAccessForMedication(UUID medicationId) {
+        Medication med = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Medication not found: " + medicationId));
+        patientAuthorizationService.ensurePatientAccess(med.getPatient().getId());
     }
 
     /**
@@ -56,7 +66,6 @@ public class MedicationService {
     @Transactional
     public Medication prescribeMedication(
             UUID patientId,
-            UUID doctorId,
             String name,
             String dosage,
             String frequency,
@@ -64,11 +73,12 @@ public class MedicationService {
             LocalDate endDate,
             boolean important) {
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
+        User doctor = resolveCurrentUser();
+
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
-
-        User doctor = userRepository.findById(doctorId)
-                .orElseThrow(() -> new RuntimeException("Doctor not found: " + doctorId));
 
         Medication medication = new Medication();
         medication.setPatient(patient);
@@ -95,11 +105,11 @@ public class MedicationService {
                 patientId,
                 EventType.MEDICATION,
                 description,
-                doctorId
+                doctor.getId()
         );
 
         auditLogService.log(
-                doctorId,
+                doctor.getId(),
                 "PRESCRIBE_MEDICATION",
                 "Medication",
                 saved.getId(),
@@ -109,8 +119,22 @@ public class MedicationService {
         return saved;
     }
 
+    private User resolveCurrentUser() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof com.careflow.ai.security.CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
+    }
+
     @Transactional
-    public Medication discontinueMedication(UUID medicationId, UUID userId) {
+    public Medication discontinueMedication(UUID medicationId) {
+
+        ensurePatientAccessForMedication(medicationId);
+
+        User actor = resolveCurrentUser();
 
         Medication medication = medicationRepository.findById(medicationId)
                 .orElseThrow(() -> new RuntimeException(
@@ -126,11 +150,11 @@ public class MedicationService {
                 saved.getPatient().getId(),
                 EventType.MEDICATION,
                 description,
-                userId
+                actor.getId()
         );
 
         auditLogService.log(
-                userId,
+                actor.getId(),
                 "DISCONTINUE_MEDICATION",
                 "Medication",
                 saved.getId(),
@@ -143,6 +167,8 @@ public class MedicationService {
     @Transactional(readOnly = true)
     public List<Medication> getPatientMedications(UUID patientId) {
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         if (!patientRepository.existsById(patientId)) {
             throw new RuntimeException("Patient not found: " + patientId);
         }
@@ -152,6 +178,8 @@ public class MedicationService {
 
     @Transactional(readOnly = true)
     public Medication getMedication(UUID medicationId) {
+
+        ensurePatientAccessForMedication(medicationId);
 
         return medicationRepository.findById(medicationId)
                 .orElseThrow(() -> new RuntimeException(

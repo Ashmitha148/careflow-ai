@@ -24,18 +24,16 @@ public class PatientController {
     @PostMapping
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE','ADMIN')")
     public PatientResponse register(
-            @RequestBody RegisterRequest request,
-            @RequestParam UUID actorUserId) {
-        return patientService.register(request, actorUserId);
+            @jakarta.validation.Valid @RequestBody RegisterRequest request) {
+        return patientService.register(request);
     }
 
     @PutMapping("/{patientId}")
     @PreAuthorize("hasAnyRole('DOCTOR','NURSE','ADMIN')")
     public PatientResponse update(
             @PathVariable UUID patientId,
-            @RequestBody UpdateRequest request,
-            @RequestParam UUID actorUserId) {
-        return patientService.update(patientId, request, actorUserId);
+            @jakarta.validation.Valid @RequestBody UpdateRequest request) {
+        return patientService.update(patientId, request);
     }
 
     @GetMapping("/my")

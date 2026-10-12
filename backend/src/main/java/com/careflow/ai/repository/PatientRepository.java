@@ -3,6 +3,7 @@ package com.careflow.ai.repository;
 import com.careflow.ai.entity.Patient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +23,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     long countByMrnStartingWith(String mrnPrefix);
 
+    @EntityGraph(attributePaths = {"assignedDoctor", "assignedNurse", "hospital"})
     @Query("""
             SELECT p FROM Patient p
             WHERE (:query IS NULL OR :query = ''
@@ -34,6 +36,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     List<UUID> findAccessibleIdsByAssignment(@Param("userId") UUID userId);
 
     /** Hospital-scoped admin search (Phase 7 tenancy). */
+    @EntityGraph(attributePaths = {"assignedDoctor", "assignedNurse", "hospital"})
     @Query("""
             SELECT p FROM Patient p
             WHERE p.hospital.id = :hospitalId
@@ -45,10 +48,12 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
                                      @Param("query") String query,
                                      Pageable pageable);
 
+    @EntityGraph(attributePaths = {"assignedDoctor", "assignedNurse", "hospital"})
     List<Patient> findByHospitalId(UUID hospitalId);
 
     long countByHospital_Id(UUID hospitalId);
 
+    @EntityGraph(attributePaths = {"assignedDoctor", "assignedNurse", "hospital"})
     @Query("""
             SELECT p FROM Patient p
             WHERE p.id IN :patientIds
@@ -59,4 +64,8 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Page<Patient> searchAccessibleByNameOrMrn(@Param("patientIds") Collection<UUID> patientIds,
                                               @Param("query") String query,
                                               Pageable pageable);
+
+    @EntityGraph(attributePaths = {"assignedDoctor", "assignedNurse", "hospital"})
+    @Override
+    List<Patient> findAllById(Iterable<UUID> ids);
 }

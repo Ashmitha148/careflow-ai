@@ -5,10 +5,15 @@ import com.careflow.ai.config.ResilientAiClient;
 import com.careflow.ai.dto.TimelineDto.TimelineEventResponse;
 import com.careflow.ai.entity.AiPromptHistory;
 import com.careflow.ai.entity.Patient;
+import com.careflow.ai.entity.Role;
 import com.careflow.ai.entity.User;
 import com.careflow.ai.repository.AiPromptHistoryRepository;
 import com.careflow.ai.repository.PatientRepository;
 import com.careflow.ai.repository.UserRepository;
+import com.careflow.ai.security.CustomUserDetails;
+import com.careflow.ai.security.PatientAuthorizationService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +50,7 @@ public class CopilotService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final AiPromptHistoryRepository aiPromptHistoryRepository;
+    private final PatientAuthorizationService patientAuthorizationService;
     private final TimelineService timelineService;
 
     public CopilotService(
@@ -52,24 +58,27 @@ public class CopilotService {
             PatientRepository patientRepository,
             UserRepository userRepository,
             AiPromptHistoryRepository aiPromptHistoryRepository,
+            PatientAuthorizationService patientAuthorizationService,
             TimelineService timelineService) {
         this.geminiClient = geminiClient;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.aiPromptHistoryRepository = aiPromptHistoryRepository;
+        this.patientAuthorizationService = patientAuthorizationService;
         this.timelineService = timelineService;
     }
 
     @Transactional
     public String timelineQuestion(
             UUID patientId,
-            UUID userId,
             String question) {
 
         validateQuestion(question);
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         Patient patient = getPatient(patientId);
-        User user = getUser(userId);
+        User user = resolveCurrentUser();
 
         List<TimelineEventResponse> events =
                 timelineService.replayLast7Days(patientId);
@@ -78,7 +87,7 @@ public class CopilotService {
 
         String prompt = SAFETY_INSTRUCTION
                 + "\n\nFeature: Timeline Q&A"
-                + "\n\nPatient: " + patient.getName()
+                + "\n\nDe-identified Patient ID: " + patient.getId()
                 + "\n\nTimeline context from the last 7 days:\n"
                 + context
                 + "\n\nQuestion:\n"
@@ -95,11 +104,12 @@ public class CopilotService {
 
     @Transactional
     public String patientSummary(
-            UUID patientId,
-            UUID userId) {
+            UUID patientId) {
+
+        patientAuthorizationService.ensurePatientAccess(patientId);
 
         Patient patient = getPatient(patientId);
-        User user = getUser(userId);
+        User user = resolveCurrentUser();
 
         List<TimelineEventResponse> events =
                 timelineService.replayLast7Days(patientId);
@@ -110,7 +120,7 @@ public class CopilotService {
                 + "\n\nFeature: Patient Summary"
                 + "\n\nCreate a concise clinical summary using only "
                 + "the documented timeline below."
-                + "\n\nPatient: " + patient.getName()
+                + "\n\nDe-identified Patient ID: " + patient.getId()
                 + "\n\nTimeline context:\n"
                 + context
                 + "\n\nStructure the response as:"
@@ -132,13 +142,14 @@ public class CopilotService {
     @Transactional
     public String plainLanguage(
             UUID patientId,
-            UUID userId,
             String text) {
 
         validateQuestion(text);
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         Patient patient = getPatient(patientId);
-        User user = getUser(userId);
+        User user = resolveCurrentUser();
 
         String prompt = SAFETY_INSTRUCTION
                 + "\n\nFeature: Plain-language explanation"
@@ -147,7 +158,7 @@ public class CopilotService {
                 + "\nDo not add facts that are not present."
                 + "\nDo not change the meaning."
                 + "\nDo not provide diagnosis or treatment advice."
-                + "\n\nPatient: " + patient.getName()
+                + "\n\nDe-identified Patient ID: " + patient.getId()
                 + "\n\nClinical information:\n"
                 + text;
 
@@ -164,20 +175,41 @@ public class CopilotService {
     public List<AiPromptHistory> getPatientPromptHistory(
             UUID patientId) {
 
+        patientAuthorizationService.ensurePatientAccess(patientId);
+
         getPatient(patientId);
 
         return aiPromptHistoryRepository
                 .findByPatient_IdOrderByCreatedAtDesc(patientId);
     }
 
+    /**
+     * A user may only fetch their OWN prompt history, or be an ADMIN. This is
+     * user-scoped (not patient-scoped), so it's a separate small rule from the
+     * patient-level authorization.
+     */
     @Transactional(readOnly = true)
     public List<AiPromptHistory> getUserPromptHistory(
             UUID userId) {
+
+        User actor = resolveCurrentUser();
+        if (!actor.getId().equals(userId) && actor.getRole() != Role.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Not authorized to view another user's prompt history");
+        }
 
         getUser(userId);
 
         return aiPromptHistoryRepository
                 .findByUser_IdOrderByCreatedAtDesc(userId);
+    }
+
+    private User resolveCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails details)) {
+            throw new RuntimeException("Authentication required");
+        }
+        return details.getUser();
     }
 
     private String executeAndRecord(

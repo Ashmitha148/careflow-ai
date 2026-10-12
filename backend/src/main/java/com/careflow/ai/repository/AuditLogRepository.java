@@ -13,6 +13,13 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     Page<AuditLog> findAllByOrderByTimestampDesc(Pageable pageable);
 
+    Page<AuditLog> findByTimestampLessThanOrderByTimestampDesc(java.time.LocalDateTime timestamp, Pageable pageable);
+
+    Page<AuditLog> findByUser_Hospital_IdOrderByTimestampDesc(UUID hospitalId, Pageable pageable);
+
+    Page<AuditLog> findByUser_Hospital_IdAndTimestampLessThanOrderByTimestampDesc(
+            UUID hospitalId, java.time.LocalDateTime timestamp, Pageable pageable);
+
     Page<AuditLog> findByUser_IdOrderByTimestampDesc(UUID userId, Pageable pageable);
 
     Page<AuditLog> findByEntityTypeAndEntityIdOrderByTimestampDesc(
