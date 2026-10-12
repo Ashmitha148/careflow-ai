@@ -1,13 +1,24 @@
 # Node
 frontend/node_modules/
 frontend/dist/
+.vite/
+coverage/
+.eslintcache
 
 # Java
 backend/target/
+target/
+dist/
+build/
+*.class
 
-# IDE
+# IDE & Editor
 .vscode/
 .idea/
+*.iml
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store
@@ -16,6 +27,27 @@ Thumbs.db
 # Environment
 .env
 *.env
+!.env.example
 
-# Logs
+# Logs & Dumps
 *.log
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+*.dump
+compile_output.txt
+comp_err.txt
+tc.log
+tc2.log
+test-compile_output.txt
+test_run_output*.txt
+test_run_p*.txt
+v10_head.txt
+v2_head.txt
+p7_head.txt
+phase6-build.log
+
+# Docker data mounts
+postgres_data/
+prometheus_data/
+grafana_data/
