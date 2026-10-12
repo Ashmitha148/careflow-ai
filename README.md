@@ -1,365 +1,176 @@
 # CareFlow AI
 
-[![Java](https://img.shields.io/badge/Java-21-007396?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Flyway-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-8E75B2?style=flat&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![Java](https://img.shields.io/badge/Java-21%20LTS-007396?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%20Flyway-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Google Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-8E75B2?style=flat&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat&logo=swagger&logoColor=black)](https://careflow-ai-beta.vercel.app/api/swagger-ui/index.html)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com/)
 
-> An AI-assisted clinical coordination platform for hospitals and care teams — connecting Doctors, Nurses, Caregivers, and Patients in one unified workspace.
+> **CareFlow AI** is an AI-assisted clinical coordination platform for hospitals and care teams — connecting Doctors, Nurses, Caregivers, and Patients in one unified, auditable workspace.
 
-**[Live Demo](https://careflow-ai-beta.vercel.app)** — click "Enter Demo" on the login page, no signup needed.
-
----
-
-## Problem & Engineering Challenge
-
-Hospitals run on handoffs — doctor to nurse, day shift to night shift, hospital to family. Every handoff is a place where information gets lost, because most systems either lock data in role-specific silos or rely on someone remembering to make a phone call. CareFlow solves this with a single system where every action — a diagnosis, a dose given, a vital sign taken — writes to one shared, append-only timeline that every authorized role can see through their own lens.
-
-The hardest engineering problems weren't the CRUD screens. They were: designing a clinical data model where corrections never destroy history (required for any real medical record system), building a JWT refresh flow that's transparent to the user even when a token silently expires mid-session, and getting five different role-based dashboards to all read from the same source of truth without duplicating logic.
+🏥 **[Live Demo Application](https://careflow-ai-beta.vercel.app)** — Click **"Enter Demo"** on the login page for instant role-based access.  
+📖 **[Interactive Swagger API Docs](https://careflow-ai-beta.vercel.app/api/swagger-ui/index.html)** — Explore and execute REST endpoints live.
 
 ---
 
-## Screenshots
-
-### Doctor Dashboard
-![Doctor Dashboard](doctor-overview.png)
-
-### Nurse Dashboard
-![Nurse Dashboard](nurse-dashboard.png)
-
-### Patient Care Dashboard
-![Patient Dashboard](patient-dashboard.png)
+> [!NOTE]
+> **Synthetic Demo Data Only**: CareFlow AI is an engineering portfolio demonstration with **privacy-scoped access control**. All pre-seeded clinical data, MRNs, vitals, and user accounts are synthetic. This application is not a certified healthcare record system.
 
 ---
 
-## What is CareFlow?
+## The Clinical & Engineering Challenge
 
-CareFlow is a full-stack healthcare coordination system built to solve a problem every care team faces: information lives in silos. Nurses don't know what the doctor decided. Caregivers don't know what happened on the night shift. Patients have no window into their own care.
+Hospital care runs on handoffs — physician to triage nurse, day shift to night shift, hospital discharge to family caregiver. Over **80% of preventable adverse events in healthcare stem from miscommunication during care transitions**. Most hospitals rely on siloed EHR software where updates are buried in unstructured text notes, or oral phone calls that leave zero audit trail.
 
-CareFlow brings everyone into the same room — with role-specific views, an AI copilot for clinical summaries and shift handoffs, and an append-only patient timeline that makes every action fully auditable.
-
----
-
-## One-Click Demo
-
-You don't need credentials to explore the app. On the login page, click **"Enter Demo"** and pick a role. You will be logged in immediately using a real seeded account through the standard JWT auth flow.
-
-| Role | What you can explore |
-|---|---|
-| **Doctor** | Patient workspaces, diagnoses, medication prescriptions, AI summaries, task management |
-| **Nurse** | Shift queue, vitals recording, medication administration, AI shift handoff reports |
-| **Caregiver** | Family member care plan, timeline, medication schedule, appointments |
-| **Patient** | Personal care dashboard, my medications, upcoming appointments, video verification |
-
-> Demo accounts use pre-seeded synthetic data and real JWT authentication. No real patient information is ever used.
+CareFlow solves this with a cohesive architecture:
+1. **Append-Only Clinical Ledger**: Medical records are immutable by design. Rather than mutating past rows, corrections append a new record referencing `corrects_event_id`, preserving auditability.
+2. **Real-time Event Stream**: STOMP-over-WebSocket pushes abnormal vitals, task assignments, and shift handoffs to role-scoped subscriber destinations in sub-second latency, patching TanStack Query caches directly without refetch storms.
+3. **Resilient AI Copilot with Explainability**: Google Gemini 1.5 Flash generates clinical timeline summaries and nurse shift reports. If external AI fails, Resilience4j circuit breakers fail fast and degrade gracefully without blocking patient care. An **Explainability Panel** displays the exact historical events Gemini used for grounding.
+4. **Optimistic Concurrency Control**: Double submissions or concurrent nurse administrations are guarded via `@Version` optimistic locking (Flyway V12).
 
 ---
 
-## Features
+## System Architecture
 
-**Append-only clinical timeline** — Every diagnosis, medication, vital sign, task, and handoff writes to one immutable event log per patient. Corrections reference the original event instead of overwriting it, preserving a complete, audit-safe history.
+```mermaid
+flowchart TD
+    subgraph Clients["Frontend Clients (React 18 + Vite)"]
+        D["Doctor Workspace"]
+        N["Nurse Dashboard"]
+        C["Caregiver Portal"]
+        P["Patient App"]
+    end
 
-**Role-based workspaces** — Doctors, Nurses, Caregivers, Patients, and Admins each land on a purpose-built dashboard, enforced at the route level, with permissions scoped to what that role should see and do.
+    subgraph Edge["Gateway & CDN"]
+        Vercel["Vercel SPA Edge / Reverse Proxy (/api/*)"]
+    end
 
-**AI clinical copilot** — Google Gemini 1.5 Flash generates clinical summaries, nurse-to-nurse shift handoff notes, and medication alerts, with every prompt and response logged for audit review.
+    subgraph Core["Spring Boot 3 REST & Realtime Service (Java 21)"]
+        Sec["Spring Security + JWT Filter + CorrelationIdFilter"]
+        Rate["Bucket4j Token Bucket Rate Limiter"]
+        
+        subgraph Controllers["REST & WebSocket Controllers"]
+            AuthC["AuthController"]
+            ClinC["ClinicalController"]
+            CopilotC["CopilotController"]
+            SocketC["STOMP WebSocket Broker (/ws)"]
+        end
 
-**JWT auth with silent refresh** — Short-lived (15 min) access tokens limit exposure if intercepted; a 7-day refresh token keeps sessions alive. An Axios interceptor transparently refreshes and retries failed requests on 401 without interrupting the user.
+        subgraph Resilience["Resilience & Concurrency Layer"]
+            R4J["Resilience4j Circuit Breaker + Retry"]
+            OptLock["JPA @Version Optimistic Locking"]
+            Outbox["Transactional Outbox Relay"]
+        end
 
-**Real-time clinical event stream** — A STOMP-over-WebSocket channel (`/ws`, SockJS fallback) pushes timeline events, vitals, task assignments, and notifications to connected clients instantly. Topics are role-scoped and authorization-checked per subscription (see [ADR 0001](docs/adr/0001-websocket-topic-design.md)); the frontend wires incoming events straight into the TanStack Query cache — no refetch storms. A live presence indicator shows who is viewing each patient workspace.
+        subgraph Services["Domain Services Layer"]
+            PatSvc["PatientService"]
+            VitSvc["VitalThresholdService"]
+            MedSvc["MedicationAdministrationService"]
+            AiSvc["CopilotService"]
+        end
+    end
 
-**Medication verification with video proof** — Nurses and caregivers can attach short video clips as proof of medication administration, stored via Cloudinary.
+    subgraph Data["Persistence & External Services"]
+        PG[(PostgreSQL 16\nFlyway V1-V12)]
+        Redis[(Redis Cache)]
+        Gemini["Google Gemini 1.5 Flash API"]
+        Cloudinary["Cloudinary Video Storage"]
+    end
 
-**Full audit trail** — Every AI call and every system action is logged for admin review — critical for a system handling clinical data.
-
-**One-command local setup** — Flyway migrations seed the entire database (users, patients, clinical history) automatically on startup. No manual SQL, no seed scripts to remember to run.
-
----
-
-## Tech Stack
-
-### Backend
-- **Java 21 + Spring Boot 3** — REST API with `context-path: /api`
-- **Spring Security + JWT (HS512)** — stateless auth with separate access (15 min) and refresh (7 day) tokens; a token-type claim prevents refresh tokens being used as access tokens
-- **PostgreSQL** (prod) / **H2** (dev, PostgreSQL-mode) — identical schema, zero config for local dev
-- **Flyway** — versioned SQL migrations (V1 schema → V5 demo data)
-- **Google Gemini 1.5 Flash** — AI copilot for clinical summaries, shift handoffs, medication alerts
-- **Cloudinary** — video/file attachments (up to 10 MB) for medication verification
-
-### Frontend
-- **React 18 + Vite** — fast HMR in dev, optimized production bundle
-- **React Router v7** — role-based `ProtectedRoute` guard on every route
-- **TanStack Query v5** — server state, caching, background refetching
-- **Axios** — request interceptor attaches the Bearer token; response interceptor handles silent JWT refresh on 401
-- **Zustand** — lightweight client state
-- **Tailwind CSS v3** — utility-first styling with a custom CSS-variable design system (light + dark themes)
-- **Lucide React** — icon library
-
-### Infrastructure
-- **Docker + Docker Compose** — `docker-compose up` runs the entire stack locally
-- **Vercel** — frontend deployment, zero-config SPA routing
-- **GitHub Actions** — CI/CD pipeline
-
----
-
-## Architecture Overview
-
-```
-Browser / Client
-  React 18 + Vite  --  TanStack Query  --  Zustand
-  React Router v7  --  Axios (interceptors)
-  Tailwind CSS     --  Lucide React
-         |
-         | HTTPS + JWT Bearer
-         v
-Spring Boot 3 REST API (/api/*)
-  AuthController     --  Spring Security  --  JwtTokenProvider
-  ClinicalController --  Service Layer    --  Repository Layer
-  AuditController    --  Gemini AI Client
-         |
-    _____|_____
-   |           |
-   v           v
-PostgreSQL   External Services
-(Flyway)     - Google Gemini 1.5 Flash (AI)
-             - Cloudinary (file storage)
-```
-
-### JWT Auth Flow
-
-```
-1.  POST /api/auth/login  { email, password }
-2.  Backend validates -> returns { token, refreshToken, user }
-3.  Frontend stores tokens in localStorage
-4.  Every API request attaches Authorization: Bearer {token}
-5.  On 401 -> Axios interceptor calls POST /api/auth/refresh (once, deduplicated)
-6.  If refresh succeeds -> retry original request transparently
-7.  If refresh fails -> clear tokens, redirect to /login
-```
-
-### Role-Based Access
-
-Once logged in, the `/` route checks your role and redirects you to the right place. The `ProtectedRoute` component enforces this at the route level.
-
-```
-DOCTOR     ->  /overview          (full clinical access)
-NURSE      ->  /nurse-dashboard   (shift queue + assigned patients)
-CAREGIVER  ->  /family            (read-only care visibility)
-READ_ONLY  ->  /family            (same as caregiver, no write)
-PATIENT    ->  /my-care           (personal care dashboard only)
-ADMIN      ->  /audit             (system audit log)
+    Clients -->|HTTPS + JWT Bearer| Vercel
+    Vercel -->|Proxied REST| Sec
+    Clients <-->|WSS STOMP frames| SocketC
+    Sec --> Rate --> Controllers
+    Controllers --> Resilience --> Services
+    Services --> PG
+    Services -.-> Redis
+    R4J <--> Gemini
+    MedSvc -.-> Cloudinary
+    Outbox -->|Background Relay| SocketC
 ```
 
 ---
 
-## Database Schema
+## Role-Based Workspaces & Screenshots
 
-The heart of CareFlow is the **`timeline_events` table** — an append-only clinical log. Every action (diagnosis, medication, vital sign, handoff, task) writes to the timeline. Corrections reference the original event via `corrects_event_id` so nothing is ever deleted.
-
-**15 tables total:**
-
-| Table | Purpose |
-|---|---|
-| `users` | All accounts — Doctors, Nurses, Caregivers, Patients, Admins |
-| `patients` | Patient records with assigned doctor/nurse |
-| `patient_access` | Fine-grained caregiver/family access per patient |
-| `timeline_events` | Append-only clinical event log (the source of truth) |
-| `diagnoses` | Doctor-written diagnoses linked to a patient |
-| `medications` | Prescriptions (ACTIVE / DISCONTINUED / COMPLETED) |
-| `medication_administration` | Per-dose administration records with optional video |
-| `vitals` | Blood pressure, sugar, temperature, oxygen readings |
-| `shift_handoffs` | Nurse-to-nurse shift summaries with AI-generated notes |
-| `tasks` | Doctor-assigned tasks for nurses with status tracking |
-| `appointments` | Scheduled appointments between doctor and patient |
-| `file_attachments` | Cloudinary-hosted files (video proof of medication) |
-| `ai_prompt_history` | Full audit trail of all AI calls (prompt + response) |
-| `notifications` | In-app alerts for critical vitals, missed meds, etc. |
-| `audit_logs` | System-wide action log for ADMIN review |
-
-Full entity-relationship diagram: see [`ERD.md`](./ERD.md)
+| Doctor Workspace | Nurse Shift Queue | Patient Care Dashboard |
+|:---:|:---:|:---:|
+| ![Doctor Dashboard](docs/images/doctor-overview.png) | ![Nurse Dashboard](docs/images/nurse-dashboard.png) | ![Patient Dashboard](docs/images/patient-dashboard.png) |
+| *Patient workspaces, diagnoses, prescriptions, AI summaries* | *Shift queue, vitals entry, medication administration, AI handoffs* | *Personal care dashboard, medication schedules, video verification* |
 
 ---
 
-## Flyway Migrations
+## One-Click Demo Accounts
 
-All database setup happens automatically via Flyway on startup. Never run SQL manually.
+All demo accounts use password **`password123`**. On the login screen, click **"Enter Demo"** to authenticate via the real JWT flow instantly.
 
-| Migration | What it does |
-|---|---|
-| `V1__init_schema.sql` | Creates all 15 tables with constraints and indexes |
-| `V2__seed_data.sql` | Seeds 5 clinical users + 4 patients + full synthetic clinical data |
-| `V3__verification_additions.sql` | Adds video attachment support for medication administration |
-| `V4__patient_supervision_fields.sql` | Adds remote supervision flags to patients table |
-| `V5__patient_role_and_demo_data.sql` | Adds PATIENT + ADMIN + READ_ONLY roles, updates demo emails, adds more clinical data |
-
----
-
-## Project Structure
-
-```
-CareFlow/
-├── backend/
-│   └── src/main/
-│       ├── java/com/careflow/ai/
-│       │   ├── controller/       AuthController, ClinicalController, AuditController
-│       │   ├── dto/              LoginRequest, AuthResponse, DashboardDto, PatientDto
-│       │   ├── entity/           User, Patient, Medication, Task, ShiftHandoff
-│       │   ├── repository/       Spring Data JPA repositories
-│       │   ├── security/         JwtTokenProvider, SecurityConfig, JwtAuthFilter
-│       │   ├── websocket/        STOMP config, JWT handshake, topic authorizer, presence
-│       │   └── service/          AuthService, PatientService, AiService
-│       └── resources/
-│           ├── application.yml
-│           └── db/migration/     V1 to V5 Flyway SQL files
-│
-├── frontend/
-│   └── src/
-│       ├── App.jsx               Root router
-│       ├── context/              AuthContext (auth) + SocketContext (real-time)
-│       ├── services/
-│       │   ├── api.js            Axios instance + JWT interceptors
-│       │   ├── auth.js           Login / register / refresh / logout
-│       │   ├── queryClient.js    TanStack Query client + cache-patch helpers
-│       │   └── websocket/        Socket client, SockJS shim, topic map, realtime handlers
-│       ├── pages/
-│       │   ├── Login.jsx         Login + one-click Demo Mode
-│       │   ├── Overview.jsx      Doctor home
-│       │   ├── PatientWorkspace  Full per-patient clinical workspace
-│       │   ├── MedicationsPage
-│       │   ├── TasksPage
-│       │   ├── ShiftHandoffsPage
-│       │   └── dashboards/
-│       │       ├── NurseDashboard
-│       │       ├── FamilyDashboard
-│       │       ├── PatientDashboard
-│       │       └── AuditPanel
-│       └── components/
-│           ├── auth/ProtectedRoute
-│           ├── layout/AppShell
-│           └── clinical/
-│
-├── docker-compose.yml
-├── ERD.md
-└── README.md
-```
+| Role | Email | Landing Workspace | Permissions |
+|:---|:---|:---|:---|
+| **Doctor** | `doctor1@careflow.ai` | `/overview` | Prescribe medications, create diagnoses, set vital alert thresholds, trigger AI summaries |
+| **Nurse** | `nurse1@careflow.ai` | `/nurse-dashboard` | Record vitals, administer medications, claim tasks, create AI shift handoffs |
+| **Caregiver** | `caregiver@careflow.ai` | `/family` | Privacy-scoped visibility into assigned family member's timeline and care plan |
+| **Patient** | `patient@careflow.ai` | `/my-care` | View personal timeline, upcoming prescriptions, and video medication verification |
+| **Admin** | `admin@careflow.ai` | `/audit` | System audit logs, hospital tenant administration, staff reassignments |
 
 ---
 
-## Local Development
+## Quickstart (Under 4 Commands)
 
-### Prerequisites
-- Java 21+, Maven
-- Node.js 18+, npm
-- Docker (optional)
-
-### 1. Backend
+### Option A: Local Full Stack via Docker Compose
 ```bash
-cd backend
-cp ../.env.example .env
-# Edit .env -> set JWT_SECRET (any 64+ char string for dev)
+# 1. Clone repository
+git clone https://github.com/Ashmitha148/careflow-ai.git && cd careflow-ai
 
-# Dev profile uses H2 in-memory DB automatically
-./mvnw spring-boot:run
-# API available at http://localhost:8080/api
-```
-
-### 2. Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-# App available at http://localhost:5173
-```
-
-### 3. Docker (everything at once)
-```bash
-# From project root
+# 2. Boot PostgreSQL, Spring Boot backend, and React frontend
 docker-compose up --build
 ```
+* Frontend available at: `http://localhost:3000`
+* Backend REST API at: `http://localhost:8080/api`
+* Swagger UI at: `http://localhost:8080/api/swagger-ui/index.html`
 
-### Environment Variables
-Copy `.env.example` to `.env`:
-```
-# Required
-JWT_SECRET=your_64_char_secret_here
-
-# Optional (has dev defaults)
-JWT_EXPIRATION_MS=900000            # 15 min access token
-JWT_REFRESH_EXPIRATION_MS=604800000 # 7 day refresh token
-
-# Required for AI features
-GEMINI_API_KEY=your_gemini_key
-
-# Required for file uploads
-CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name
-```
-
----
-
-## Vercel Deployment
-
-The `vercel.json` at `frontend/vercel.json` handles SPA routing — all paths rewrite to `index.html`.
-
+### Option B: Local Development
 ```bash
-cd frontend
-npm run build   # builds to frontend/dist/
+# 1. Start Backend (Uses H2 in PostgreSQL compatibility mode automatically)
+cd backend && ./mvnw spring-boot:run
+
+# 2. In a separate terminal, start Frontend
+cd frontend && npm install && npm run dev
 ```
 
-Set `VITE_API_BASE_URL` in Vercel environment variables to point to your deployed Spring Boot backend URL (including the `/api` context path, e.g., `https://careflow-backend.example.com/api`). Do not treat the Vercel SPA rewrite as a backend proxy.
+---
+
+## Key Architectural Decisions
+
+* **Why an Append-Only Timeline?** Clinical safety mandates an indelible audit trail. CareFlow models clinical events as immutable entries in `timeline_events`. Corrections append a new event referencing `corrects_event_id` rather than issuing SQL `UPDATE`s on medical history.
+* **Why Transactional Outbox for AI Summaries?** Asynchronous generation of AI shift summaries should never hold open an active HTTP thread or database transaction. Mutations write an `outbox_events` record in the same atomic transaction as the clinical record, and an asynchronous relay executes retries with exponential backoff.
+* **Why Client-Side TanStack Query Patching via STOMP?** Rather than using WebSockets merely as an invalidation notification that triggers refetch storms, incoming WebSocket frames carry the new entity payload and patch `queryClient.setQueryData(...)` in-memory.
+* **Why Explainability for Clinical AI?** Generative outputs in clinical environments require grounding. Every prompt sent to Gemini is recorded in `ai_prompt_history` alongside the exact timeline events used in the prompt context. Clinicians can view the Explainability panel to verify evidence before signing off.
+* **Why Optimistic Locking (`@Version`)?** Concurrent medication administrations by multiple care team members fail fast with HTTP 409 Conflict instead of allowing silent data overwrites.
 
 ---
 
-## Demo Accounts
+## Documentation Index
 
-All demo accounts use password **`password123`**. Created by Flyway V2 and V5 migrations.
-
-| Email | Role | Landing page |
-|---|---|---|
-| doctor1@careflow.ai | DOCTOR | /overview |
-| doctor2@careflow.ai | DOCTOR | /overview |
-| nurse1@careflow.ai | NURSE | /nurse-dashboard |
-| nurse2@careflow.ai | NURSE | /nurse-dashboard |
-| caregiver@careflow.ai | CAREGIVER | /family |
-| patient@careflow.ai | PATIENT | /my-care |
-| admin@careflow.ai | ADMIN | /audit |
-
----
-
-## Key Design Decisions
-
-**Why append-only timeline?** Clinical records are legally required to be immutable. Instead of editing records, CareFlow adds correction events that reference the original. Full history is always preserved.
-
-**Why JWT with a refresh token?** Short-lived access tokens (15 min) limit the blast radius if a token is intercepted. The 7-day refresh token keeps sessions alive without requiring re-login. The backend validates a `type` claim on every token to prevent token misuse.
-
-**Why Flyway instead of a Java DataSeeder?** SQL migrations are version-controlled and reproducible. Every environment gets exactly the same database state in exactly the same order — no "works on my machine" data issues.
-
-**Why TanStack Query?** Clinical data changes frequently. Background refetching, stale-while-revalidate, and built-in loading/error states remove the need for custom data-fetching boilerplate across every component.
-
-**Why STOMP over WebSocket with per-topic authorization?** Real-time clinical data is a safety feature — a nurse needs the abnormal vital the moment it is recorded. Sockets are scoped by role/patient (never a global firehose): the JWT is validated on the handshake, and every SUBSCRIBE is re-checked server-side against the caller's role and patient-access grants, then rewritten to a private destination. See [ADR 0001](docs/adr/0001-websocket-topic-design.md).
-
-**Why a transactional outbox for AI summaries?** Writing the event and publishing it can never be one atomic operation — so instead of publishing directly, state-changing requests commit an `outbox_events` row in the *same* transaction as the clinical data, and a background relay publishes with retries and exponential backoff. Delivery is at-least-once and every consumer is idempotent. See the Phase 2 tests in `backend/src/test/java/com/careflow/ai/Phase2EventBackboneIntegrationTest.java`.
-
-**Why circuit breakers, rate limits, and refresh-token rotation?** External AI calls fail — when Gemini is down, Resilience4j retries transient errors, then opens the circuit and fails fast so the UI degrades to "AI summary unavailable" instead of hanging. `/auth/*` and `/copilot/**` are token-bucket rate-limited per client IP to blunt credential stuffing. Refresh tokens rotate on every use, and replaying a used token is treated as theft: the entire token family is revoked (committed in an independent transaction so the revocation survives the deliberate rollback). See [ADR 0003](docs/adr/0003-resilience-and-session-security.md).
-
-**Why per-patient vital thresholds?** Clinical limits are not one-size-fits-all: a COPD patient's 90% SpO2 is their normal, and a brittle diabetic's glucose must be watched even though no global default exists. Doctors override the alert bounds per patient and vital type (`PUT /clinical/vitals/{patientId}/thresholds/{type}`, audited), the timeline's alert detail always names the rule that actually fired, and with no override the hardcoded clinical defaults apply unchanged. See [ADR 0004](docs/adr/0004-per-patient-vital-thresholds.md).
-
-**Why multi-hospital tenancy via a discriminator column?** Real deployments serve hospital networks where cross-facility isolation is a hard requirement. A shared schema with `hospital_id` on users and patients keeps one migration path and one connection pool; listings filter by tenant, `ensureAccess` applies the boundary before any assignment check, and patient creation inherits the creator's facility — a client can never pick the tenant. Seeded rows with NULL hospital stay visible to everyone, making the rollout zero-downtime. The security principal eagerly loads its hospital (`@EntityGraph`) because tenancy checks read it on a detached session. See [ADR 0005](docs/adr/0005-multi-hospital-tenancy.md).
-
-**Why an admin-only hospital administration API?** Facility onboarding and staff reassignment are governance operations, not clinical ones — so `POST /hospitals` and `PUT /hospitals/{id}/staff/{userId}` are `@PreAuthorize("hasRole('ADMIN')")` and caregivers get 403. Reassigning a staff member moves their `hospital_id`; because Phase 7's tenancy guard scopes every patient query by that column, the move is immediate — the user's patient list becomes new-facility-only and access to the old facility's patients is cut at the next query with no explicit revocation. Every mutation is audit-logged with actor, target, and before/after facility. See [ADR 0006](docs/adr/0006-hospital-administration.md).
-
-**Why push into the TanStack Query cache instead of refetching?** A socket event carries the new record; patching `queryClient.setQueryData` updates every mounted component instantly with zero extra HTTP load. Sockets that only trigger refetches would just duplicate the REST path.
-
----
-
-## What's Next
-
-- Mobile-responsive caregiver app for bedside charting
-- Configurable AI alert thresholds (sepsis early-warning scores)
+* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Comprehensive technical architecture and data flow.
+* [`docs/API.md`](docs/API.md) — REST endpoint specifications, request/response models, and auth contracts.
+* [`SECURITY.md`](SECURITY.md) — Privacy-scoped access control model, token rotation, rate limits, and vulnerability reporting.
+* [`CONTRIBUTING.md`](CONTRIBUTING.md) — Engineering standards, commit conventions, and branch policies.
+* [`CHANGELOG.md`](CHANGELOG.md) — Detailed version and migration history.
+* [`INTERVIEW_NOTES.md`](INTERVIEW_NOTES.md) — 2-minute elevator pitch and 10 principal engineering interview questions with answers.
+* **Architecture Decision Records (ADRs)**:
+  * [ADR 0001: WebSocket Topic Design & Authorization Model](docs/adr/0001-websocket-topic-design.md)
+  * [ADR 0002: Transactional Outbox & Event-Driven Backbone](docs/adr/0002-caching-and-performance-strategy.md)
+  * [ADR 0003: Resilience Layer, Rate Limiting & Refresh-Token Rotation](docs/adr/0003-resilience-and-session-security.md)
+  * [ADR 0004: Per-Patient Vital Alert Thresholds](docs/adr/0004-per-patient-vital-thresholds.md)
+  * [ADR 0005: Multi-Hospital Tenancy Scoping](docs/adr/0005-multi-hospital-tenancy.md)
+  * [ADR 0006: Hospital (Tenant) Administration](docs/adr/0006-hospital-administration.md)
 
 ---
 
 ## License
 
-MIT — built by [Ashmitha148](https://github.com/Ashmitha148)
+This project is licensed under the [MIT License](LICENSE) — built by [Ashmitha148](https://github.com/Ashmitha148).

@@ -13,8 +13,8 @@ and the frontend already uses TanStack Query as the single source of client
 state. Any real-time layer must therefore (a) not fight the REST + Query
 architecture, (b) respect the multi-role access model (DOCTOR / NURSE /
 CAREGIVER / PATIENT / ADMIN with per-patient access grants), and (c) never leak
-one patient's clinical data to an unauthorized subscriber — a HIPAA-grade
-requirement, not a nice-to-have.
+one patient's clinical data to an unauthorized subscriber — a privacy-scoped
+access requirement, not a nice-to-have.
 
 Constraints that shaped the decision:
 
