@@ -1,0 +1,251 @@
+/**
+ * Complete, self-contained mock dataset for CareFlow AI.
+ * Mirrors the exact Flyway V2 & V5 database seed for offline & zero-failure demo fallback.
+ */
+
+export const MOCK_USERS = {
+  "doctor1@careflow.ai": {
+    id: "11111111-1111-1111-1111-111111111111",
+    email: "doctor1@careflow.ai",
+    fullName: "Dr. Sarah Jenkins",
+    role: "DOCTOR",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "doctor2@careflow.ai": {
+    id: "22222222-2222-2222-2222-222222222222",
+    email: "doctor2@careflow.ai",
+    fullName: "Dr. Michael Chen",
+    role: "DOCTOR",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "nurse1@careflow.ai": {
+    id: "33333333-3333-3333-3333-333333333333",
+    email: "nurse1@careflow.ai",
+    fullName: "Nurse Emily Watson",
+    role: "NURSE",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "nurse2@careflow.ai": {
+    id: "44444444-4444-4444-4444-444444444444",
+    email: "nurse2@careflow.ai",
+    fullName: "Nurse James Rivera",
+    role: "NURSE",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "caregiver@careflow.ai": {
+    id: "55555555-5555-5555-5555-555555555555",
+    email: "caregiver@careflow.ai",
+    fullName: "Maria Rodriguez",
+    role: "CAREGIVER",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "patient@careflow.ai": {
+    id: "66666666-6666-6666-6666-666666666666",
+    email: "patient@careflow.ai",
+    fullName: "Eleanor Vance",
+    role: "PATIENT",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+  "admin@careflow.ai": {
+    id: "77777777-7777-7777-7777-777777777777",
+    email: "admin@careflow.ai",
+    fullName: "System Administrator",
+    role: "ADMIN",
+    hospitalId: "h1111111-1111-1111-1111-111111111111",
+  },
+};
+
+export const MOCK_PATIENTS = [
+  {
+    id: "a1111111-1111-1111-1111-111111111111",
+    mrn: "MRN-1001",
+    name: "Eleanor Vance",
+    dob: "1948-03-15",
+    gender: "Female",
+    room: "ICU-204",
+    status: "CRITICAL",
+    contactInfo: "555-0192 | 124 Elm St, Springfield",
+    assignedDoctorId: "11111111-1111-1111-1111-111111111111",
+    assignedNurseId: "33333333-3333-3333-3333-333333333333",
+    remoteSupervisionEnabled: true,
+    caregiverPhysicallyPresent: false,
+    diagnoses: ["Congestive Heart Failure (NYHA Class III)", "Type 2 Diabetes Mellitus"],
+  },
+  {
+    id: "a2222222-2222-2222-2222-222222222222",
+    mrn: "MRN-1002",
+    name: "Robert Thorne",
+    dob: "1962-07-22",
+    gender: "Male",
+    room: "Stepdown-312",
+    status: "STABLE",
+    contactInfo: "555-0144 | 88 Maple Ave, Oakdale",
+    assignedDoctorId: "22222222-2222-2222-2222-222222222222",
+    assignedNurseId: "44444444-4444-4444-4444-444444444444",
+    remoteSupervisionEnabled: false,
+    caregiverPhysicallyPresent: true,
+    diagnoses: ["Post-Op Coronary Artery Bypass Graft (CABG x3)"],
+  },
+  {
+    id: "a3333333-3333-3333-3333-333333333333",
+    mrn: "MRN-1003",
+    name: "Clara Oswald",
+    dob: "1985-11-04",
+    gender: "Female",
+    room: "Ward-105",
+    status: "STABLE",
+    contactInfo: "555-0177 | 42 Rose Lane, Riverdale",
+    assignedDoctorId: "11111111-1111-1111-1111-111111111111",
+    assignedNurseId: "33333333-3333-3333-3333-333333333333",
+    remoteSupervisionEnabled: true,
+    caregiverPhysicallyPresent: false,
+    diagnoses: ["Acute Asthma Exacerbation"],
+  },
+  {
+    id: "a4444444-4444-4444-4444-444444444444",
+    mrn: "MRN-1004",
+    name: "Arthur Pendelton",
+    dob: "1955-09-30",
+    gender: "Male",
+    room: "Ward-110",
+    status: "MONITORING",
+    contactInfo: "555-0188 | 701 Pine Rd, Highland",
+    assignedDoctorId: "22222222-2222-2222-2222-222222222222",
+    assignedNurseId: "44444444-4444-4444-4444-444444444444",
+    remoteSupervisionEnabled: false,
+    caregiverPhysicallyPresent: false,
+    diagnoses: ["COPD Exacerbation with Right Lower Lobe Pneumonia"],
+  },
+];
+
+export const MOCK_VITALS = [
+  {
+    id: "c1111111-1111-1111-1111-111111111111",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    type: "HEART_RATE",
+    value: "112 bpm",
+    recordedAt: new Date(Date.now() - 3600000).toISOString(),
+    isAbnormal: true,
+  },
+  {
+    id: "c2222222-2222-2222-2222-222222222222",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    type: "BLOOD_PRESSURE",
+    value: "148/92 mmHg",
+    recordedAt: new Date(Date.now() - 7200000).toISOString(),
+    isAbnormal: true,
+  },
+  {
+    id: "c3333333-3333-3333-3333-333333333333",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    type: "OXYGEN_SATURATION",
+    value: "94%",
+    recordedAt: new Date(Date.now() - 10800000).toISOString(),
+    isAbnormal: false,
+  },
+];
+
+export const MOCK_MEDICATIONS = [
+  {
+    id: "b1111111-1111-1111-1111-111111111111",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    name: "Furosemide",
+    dosage: "40mg",
+    frequency: "Oral Twice Daily",
+    status: "ACTIVE",
+    important: true,
+  },
+  {
+    id: "b1111111-2222-2222-2222-222222222222",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    name: "Lisinopril",
+    dosage: "10mg",
+    frequency: "Oral Daily",
+    status: "ACTIVE",
+    important: true,
+  },
+  {
+    id: "b5555555-5555-5555-5555-555555555555",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    name: "Metformin",
+    dosage: "500mg",
+    frequency: "Oral Twice Daily",
+    status: "ACTIVE",
+    important: true,
+  },
+];
+
+export const MOCK_TASKS = [
+  {
+    id: "f5555555-5555-5555-5555-555555555555",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    patientName: "Eleanor Vance",
+    assignedNurseId: "33333333-3333-3333-3333-333333333333",
+    title: "Administer IV Furosemide",
+    description: "40mg IV push over 2 minutes. Monitor urine output and BP.",
+    dueAt: new Date(Date.now() + 3600000).toISOString(),
+    status: "PENDING",
+  },
+  {
+    id: "f6666666-6666-6666-6666-666666666666",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    patientName: "Eleanor Vance",
+    assignedNurseId: "33333333-3333-3333-3333-333333333333",
+    title: "Check Blood Glucose",
+    description: "Fingerstick glucose check before lunch.",
+    dueAt: new Date(Date.now() + 7200000).toISOString(),
+    status: "PENDING",
+  },
+  {
+    id: "f7777777-7777-7777-7777-777777777777",
+    patientId: "a2222222-2222-2222-2222-222222222222",
+    patientName: "Robert Thorne",
+    assignedNurseId: "44444444-4444-4444-4444-444444444444",
+    title: "Check Sternal Dressing",
+    description: "Inspect post-op CABG incision site for erythema or discharge.",
+    dueAt: new Date(Date.now() + 1800000).toISOString(),
+    status: "IN_PROGRESS",
+  },
+];
+
+export const MOCK_TIMELINE = [
+  {
+    id: "t1111111-1111-1111-1111-111111111111",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    eventType: "VITAL_SIGNS",
+    title: "Tachycardia Alert",
+    description: "Heart rate elevated to 112 bpm. Clinician notified.",
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    severity: "CRITICAL",
+  },
+  {
+    id: "t2222222-2222-2222-2222-222222222222",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    eventType: "MEDICATION",
+    title: "Medication Administered",
+    description: "Lisinopril 10mg oral administered by Nurse Emily Watson.",
+    timestamp: new Date(Date.now() - 7200000).toISOString(),
+    severity: "INFO",
+  },
+  {
+    id: "t3333333-3333-3333-3333-333333333333",
+    patientId: "a1111111-1111-1111-1111-111111111111",
+    eventType: "DIAGNOSIS",
+    title: "Diagnosis Updated",
+    description: "Congestive Heart Failure (NYHA Class III) recorded by Dr. Sarah Jenkins.",
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
+    severity: "INFO",
+  },
+];
+
+export const MOCK_DASHBOARD_SUMMARY = {
+  activePatients: 4,
+  criticalAlerts: 2,
+  pendingTasks: 3,
+  completedTasksToday: 8,
+  recentActivity: [
+    { id: "1", text: "Vitals recorded for Eleanor Vance (HR: 112 bpm)", time: "10 mins ago" },
+    { id: "2", text: "Albuterol administered for Clara Oswald", time: "35 mins ago" },
+    { id: "3", text: "New diagnosis added for Robert Thorne", time: "1 hour ago" },
+  ],
+};
