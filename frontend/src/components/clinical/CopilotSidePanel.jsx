@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bot, FileSearch, FileText, Languages, MessageCircle, X } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
