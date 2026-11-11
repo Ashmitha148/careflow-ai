@@ -1,21 +1,35 @@
 import { useState } from "react";
 import { usePatients } from "../services/patientHooks";
 import { useNavigate } from "react-router-dom";
-import { Search, User, ChevronRight, Activity, ShieldCheck, HeartPulse } from "lucide-react";
+import { Search, ChevronRight, Activity, HeartPulse } from "lucide-react";
 import { MOCK_PATIENTS } from "../services/mockDemoData";
 import { useStore } from "../store/useStore";
+
+function formatDemographics(patient) {
+  if (!patient) return "";
+  const isMale = (patient.gender || "").toLowerCase().startsWith("m");
+  const gender = isMale ? "Male" : "Female";
+  let age = isMale ? "58y" : "44y";
+  if (patient.dob) {
+    const birthYear = new Date(patient.dob).getFullYear();
+    if (!isNaN(birthYear) && birthYear > 1900) {
+      age = `${new Date().getFullYear() - birthYear}y`;
+    }
+  }
+  return `${patient.mrn} · ${gender}, ${age}`;
+}
 
 export default function PatientList() {
   const navigate = useNavigate();
   const { setSelectedPatientId } = useStore();
-  const { patients: hookPatients, loading } = usePatients();
+  const { patients: hookPatients } = usePatients();
   const [search, setSearch] = useState("");
 
   const patients = (hookPatients && hookPatients.length > 0) ? hookPatients : MOCK_PATIENTS;
 
   const filtered = patients.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.mrn.toLowerCase().includes(search.toLowerCase())
+    (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (p.mrn || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -46,7 +60,7 @@ export default function PatientList() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {filtered.map((patient) => {
-          const initials = patient.name
+          const initials = (patient.name || "Patient")
             .split(" ")
             .map((n) => n[0])
             .join("");
@@ -78,7 +92,7 @@ export default function PatientList() {
                       )}
                     </div>
                     <p className="text-xs font-mono text-[var(--text-muted)]">
-                      {patient.mrn} · {patient.gender === "MALE" ? "Male, 58y" : "Female, 46y"}
+                      {formatDemographics(patient)}
                     </p>
                   </div>
                 </div>
@@ -89,11 +103,15 @@ export default function PatientList() {
               <div className="mt-4 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
                 <div>
                   <span className="text-[10px] uppercase text-[var(--text-muted)] block">Assigned Doctor</span>
-                  <span className="font-semibold text-[var(--text-primary)]">Dr. Aarav Sharma</span>
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {patient.assignedDoctorName || "Dr. Aarav Sharma"}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase text-[var(--text-muted)] block">Primary Nurse</span>
-                  <span className="font-semibold text-[var(--text-primary)]">Nurse Ananya Iyer</span>
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    {patient.assignedNurseName || "Nurse Ananya Iyer"}
+                  </span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase text-[var(--text-muted)] block">Status</span>

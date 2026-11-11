@@ -69,6 +69,20 @@ function timeAgo(value) {
   return `${days}d ago`;
 }
 
+function formatDemographics(patient) {
+  if (!patient) return "";
+  const isMale = (patient.gender || "").toLowerCase().startsWith("m");
+  const fallback = isMale ? "58M" : "44F";
+  if (patient.dob) {
+    const birthYear = new Date(patient.dob).getFullYear();
+    if (!isNaN(birthYear) && birthYear > 1900) {
+      const age = new Date().getFullYear() - birthYear;
+      return `${age}${isMale ? "M" : "F"}`;
+    }
+  }
+  return fallback;
+}
+
 export default function Overview() {
   const navigate = useNavigate();
   const { toggleCopilot, setSelectedPatientId } = useStore();
@@ -273,7 +287,9 @@ export default function Overview() {
     year: "numeric",
   });
 
-  const clinicianName = currentUser?.fullName || "Dr. Aarav Sharma";
+  const clinicianName = (currentUser?.fullName && !currentUser.fullName.includes("Sarah Jenkins"))
+    ? currentUser.fullName
+    : "Dr. Aarav Sharma";
 
   return (
     <div className="space-y-6 pb-12">
@@ -495,7 +511,7 @@ export default function Overview() {
                         )}
                       </div>
                       <p className="text-xs text-[var(--text-secondary)]">
-                        {patient.gender === "MALE" ? "58M" : "46F"} · Assigned: Dr. Aarav Sharma · Nurse Ananya Iyer
+                        {formatDemographics(patient)} · Assigned: Dr. Aarav Sharma · Nurse Ananya Iyer
                       </p>
                     </div>
                   </div>

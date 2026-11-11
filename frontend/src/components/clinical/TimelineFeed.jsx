@@ -8,6 +8,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { usePatientTimeline } from "../../services/timelineHooks";
+import { MOCK_TIMELINE } from "../../services/mockDemoData";
 
 const EVENT_TYPES = [
   "DIAGNOSIS",
@@ -52,7 +53,10 @@ export default function TimelineFeed({ patientId }) {
     () => (filterType ? { eventType: filterType } : {}),
     [filterType]
   );
-  const { events, loading, error } = usePatientTimeline(patientId, params);
+  const { events: hookEvents, loading, error } = usePatientTimeline(patientId, params);
+  const events = (hookEvents && hookEvents.length > 0)
+    ? hookEvents
+    : (patientId ? MOCK_TIMELINE.filter(t => !filterType || t.eventType === filterType) : MOCK_TIMELINE);
   const rowRefs = useRef({});
 
   function scrollToEvent(id) {

@@ -5,6 +5,14 @@ import {
   logout as logoutRequest,
   getCurrentUser,
 } from "../services/auth";
+import { normalizeNamesInResponse } from "../services/api";
+
+function cleanUser(user) {
+  if (!user) return null;
+  const clone = { ...user };
+  normalizeNamesInResponse(clone);
+  return clone;
+}
 
 export const AuthContext = createContext(null);
 
@@ -12,7 +20,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem("careflow_user");
-      return saved ? JSON.parse(saved) : null;
+      return saved ? cleanUser(JSON.parse(saved)) : null;
     } catch (_) {
       return null;
     }
@@ -27,16 +35,17 @@ export function AuthProvider({ children }) {
     }
     getCurrentUser()
       .then((me) => {
-        setUser(me);
+        const cleaned = cleanUser(me);
+        setUser(cleaned);
         try {
-          localStorage.setItem("careflow_user", JSON.stringify(me));
+          localStorage.setItem("careflow_user", JSON.stringify(cleaned));
         } catch (_) {}
       })
       .catch(() => {
         const saved = localStorage.getItem("careflow_user");
         if (saved) {
           try {
-            setUser(JSON.parse(saved));
+            setUser(cleanUser(JSON.parse(saved)));
             return;
           } catch (_) {}
         }
@@ -49,8 +58,12 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     const loggedInUser = await loginRequest(email, password);
-    setUser(loggedInUser);
-    return loggedInUser;
+    const cleaned = cleanUser(loggedInUser);
+    setUser(cleaned);
+    try {
+      localStorage.setItem("careflow_user", JSON.stringify(cleaned));
+    } catch (_) {}
+    return cleaned;
   }
 
   async function register(email, password, fullName, role) {
@@ -60,8 +73,12 @@ export function AuthProvider({ children }) {
       fullName,
       role,
     );
-    setUser(registeredUser);
-    return registeredUser;
+    const cleaned = cleanUser(registeredUser);
+    setUser(cleaned);
+    try {
+      localStorage.setItem("careflow_user", JSON.stringify(cleaned));
+    } catch (_) {}
+    return cleaned;
   }
 
   function logout() {

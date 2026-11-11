@@ -11,12 +11,28 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 import { useUnreadCount } from "../../services/notificationsHooks";
 
-const realtimeTone = {
-  connected: "text-emerald-400",
-  connecting: "text-amber-400",
-  error: "text-rose-400",
-  disconnected: "text-[var(--text-muted)]",
-};
+function getClinicianName(user) {
+  const name = user?.fullName || "";
+  if (!name || name.includes("Sarah Jenkins") || user?.email === "doctor1@careflow.ai") {
+    return "Dr. Aarav Sharma";
+  }
+  if (name.includes("Michael Chen") || user?.email === "doctor2@careflow.ai") {
+    return "Dr. Priya Patel";
+  }
+  if (name.includes("Emily Watson") || user?.email === "nurse1@careflow.ai") {
+    return "Nurse Ananya Iyer";
+  }
+  if (name.includes("James Rivera") || user?.email === "nurse2@careflow.ai") {
+    return "Nurse Vikram Singh";
+  }
+  if (name.includes("Maria Rodriguez") || user?.email === "caregiver@careflow.ai") {
+    return "Sunita Verma";
+  }
+  if (name.includes("Eleanor Vance") || user?.email === "patient@careflow.ai") {
+    return "Ramesh Kumar";
+  }
+  return name;
+}
 
 export default function Topbar() {
   const {
@@ -32,24 +48,15 @@ export default function Topbar() {
   } = useStore();
   const { user: currentUser } = useAuth();
 
-  // Pull the authoritative unread count from the server (hydrates the store badge).
   useUnreadCount(currentUser?.id);
 
-  // Auto-dismiss the realtime notification toast after a few seconds.
   useEffect(() => {
     if (!latestNotification) return undefined;
     const timer = setTimeout(clearLatestNotification, 6000);
     return () => clearTimeout(timer);
   }, [latestNotification, clearLatestNotification]);
 
-  const connectionLabel =
-    realtimeStatus === "connected"
-      ? "Live"
-      : realtimeStatus === "connecting"
-        ? "Connecting…"
-        : realtimeStatus === "error"
-          ? "Realtime degraded"
-          : "Offline";
+  const clinicianName = getClinicianName(currentUser);
 
   return (
     <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-primary)]/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
@@ -67,7 +74,7 @@ export default function Topbar() {
           <p className="text-[10px] font-medium text-[var(--text-muted)]">Apollo CareFlow Institute</p>
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-[var(--text-primary)]">
-              {currentUser?.fullName || "Dr. Aarav Sharma"}
+              {clinicianName}
             </span>
             <span className="rounded bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-mono font-medium text-teal-400 border border-teal-500/20">
               {currentUser?.role || "DOCTOR"}
@@ -140,12 +147,11 @@ export default function Topbar() {
 
         <div className="hidden items-center gap-2 sm:flex">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500/10 text-xs font-semibold text-teal-400">
-            {currentUser?.fullName?.charAt(0) ?? "C"}
+            {clinicianName.charAt(0) ?? "D"}
           </div>
         </div>
       </div>
 
-      {/* Real-time notification toast (fed by the socket bridge) */}
       {latestNotification && (
         <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] max-w-[320px] rounded-2xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] p-4 shadow-2xl">
           <div className="flex items-start gap-2.5">

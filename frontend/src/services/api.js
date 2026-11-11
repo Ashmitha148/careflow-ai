@@ -31,7 +31,65 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Dynamic in-memory stores for interactive demo mutations
+// Map of legacy seeded names to clean, natural Indian clinical names
+const NAME_MAP = {
+  "Dr. Sarah Jenkins": "Dr. Aarav Sharma",
+  "Sarah Jenkins": "Dr. Aarav Sharma",
+  "Dr. Michael Chen": "Dr. Priya Patel",
+  "Michael Chen": "Dr. Priya Patel",
+  "Nurse Emily Watson": "Nurse Ananya Iyer",
+  "Emily Watson": "Nurse Ananya Iyer",
+  "Nurse James Rivera": "Nurse Vikram Singh",
+  "James Rivera": "Nurse Vikram Singh",
+  "Maria Rodriguez": "Sunita Verma",
+  "Eleanor Vance": "Ramesh Kumar",
+  "Robert Thorne": "Rajesh Patel",
+  "Clara Oswald": "Meera Nair",
+  "Arthur Pendelton": "Sunil Verma",
+  "Dr. Reviewer Smith": "Dr. Kabir Mehta",
+};
+
+export function normalizeNamesInResponse(obj) {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj)) {
+    obj.forEach(normalizeNamesInResponse);
+    return;
+  }
+
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (typeof val === "string") {
+      for (const [oldName, newName] of Object.entries(NAME_MAP)) {
+        if (val === oldName || (val.includes(oldName) && key !== "email" && key !== "token")) {
+          obj[key] = val.replaceAll(oldName, newName);
+        }
+      }
+    } else if (typeof val === "object" && val !== null) {
+      normalizeNamesInResponse(val);
+    }
+  }
+
+  // Enforce proper demographic & gender alignment
+  if (obj.mrn === "MRN-1001" || obj.name === "Ramesh Kumar") {
+    obj.name = "Ramesh Kumar";
+    obj.gender = "Male";
+    obj.dob = "1968-05-14";
+  } else if (obj.mrn === "MRN-1002" || obj.name === "Rajesh Patel") {
+    obj.name = "Rajesh Patel";
+    obj.gender = "Male";
+    obj.dob = "1964-08-22";
+  } else if (obj.mrn === "MRN-1003" || obj.name === "Meera Nair") {
+    obj.name = "Meera Nair";
+    obj.gender = "Female";
+    obj.dob = "1982-11-04";
+  } else if (obj.mrn === "MRN-1004" || obj.name === "Sunil Verma") {
+    obj.name = "Sunil Verma";
+    obj.gender = "Male";
+    obj.dob = "1974-09-30";
+  }
+}
+
+// Dynamic in-memory stores for interactive mutations
 const liveMedications = [...MOCK_MEDICATIONS];
 const liveVitals = [...MOCK_VITALS];
 const liveTasks = [...MOCK_TASKS];
@@ -59,7 +117,11 @@ function getMockResponseForRequest(config) {
   if (url.includes("/auth/me")) {
     const savedUser = localStorage.getItem("careflow_user");
     if (savedUser) {
-      try { return JSON.parse(savedUser); } catch (_) {}
+      try {
+        const u = JSON.parse(savedUser);
+        normalizeNamesInResponse(u);
+        return u;
+      } catch (_) {}
     }
     return MOCK_USERS["doctor1@careflow.ai"];
   }
@@ -83,18 +145,35 @@ function getMockResponseForRequest(config) {
     };
   }
 
-  // 3. Patients (both array and paginated formats)
+  // 3. Timeline events (handles both /timeline and /patients/:id/timeline)
+  if (url.includes("/timeline")) {
+    const match = url.match(/\/patients\/([a-zA-Z0-9-]+)\/timeline/);
+    const pid = match ? match[1] : null;
+    const items = pid ? liveTimeline.filter(t => t.patientId === pid) : liveTimeline;
+    const finalItems = items.length > 0 ? items : liveTimeline;
+    return {
+      content: finalItems,
+      items: finalItems,
+      totalElements: finalItems.length,
+      hasMore: false,
+    };
+  }
+
+  // 4. Patients (both array and single patient formats)
   if (url.includes("/patients/my")) {
     return MOCK_PATIENTS;
   }
 
   if (url.includes("/patients") && method === "get") {
-    const match = url.match(/\/patients\/([a-zA-Z0-9-]+)$/);
-    if (match) {
-      const patientId = match[1];
-      const p = MOCK_PATIENTS.find(pt => pt.id === patientId);
+    const cleanUrl = url.split("?")[0].replace(/\/+$/, "");
+    const segments = cleanUrl.split("/").filter(Boolean);
+    const lastSeg = segments[segments.length - 1];
+
+    if (lastSeg && lastSeg !== "patients" && lastSeg !== "my") {
+      const p = MOCK_PATIENTS.find(pt => pt.id === lastSeg);
       return p || MOCK_PATIENTS[0];
     }
+
     return {
       content: MOCK_PATIENTS,
       totalElements: MOCK_PATIENTS.length,
@@ -104,7 +183,7 @@ function getMockResponseForRequest(config) {
     };
   }
 
-  // 4. Clinical Vitals (GET & POST)
+  // 5. Clinical Vitals (GET & POST)
   if (url.includes("/clinical/vitals") || url.includes("/vitals")) {
     if (method === "post") {
       let body = config.data;
@@ -131,10 +210,17 @@ function getMockResponseForRequest(config) {
       });
       return newVital;
     }
+    const cleanUrl = url.split("?")[0].replace(/\/+$/, "");
+    const segments = cleanUrl.split("/").filter(Boolean);
+    const lastSeg = segments[segments.length - 1];
+    if (lastSeg && lastSeg !== "vitals" && lastSeg !== "clinical") {
+      const filtered = liveVitals.filter(v => v.patientId === lastSeg);
+      return filtered.length > 0 ? filtered : liveVitals;
+    }
     return liveVitals;
   }
 
-  // 5. Clinical Medications (GET & POST & ADMINISTER)
+  // 6. Clinical Medications (GET & POST & ADMINISTER)
   if (url.includes("/clinical/medications") || url.includes("/medications")) {
     if (url.includes("/administer") || (url.includes("/administer") && method === "post")) {
       let body = config.data;
@@ -179,10 +265,41 @@ function getMockResponseForRequest(config) {
       });
       return newMed;
     }
+    const cleanUrl = url.split("?")[0].replace(/\/+$/, "");
+    const segments = cleanUrl.split("/").filter(Boolean);
+    const lastSeg = segments[segments.length - 1];
+    if (lastSeg && lastSeg !== "medications" && lastSeg !== "clinical") {
+      const filtered = liveMedications.filter(m => m.patientId === lastSeg);
+      return filtered.length > 0 ? filtered : liveMedications;
+    }
     return liveMedications;
   }
 
-  // 6. Clinical Tasks (GET, POST, PUT, COMPLETE, START)
+  // 7. Clinical Appointments
+  if (url.includes("/clinical/appointments") || url.includes("/appointments")) {
+    return [
+      {
+        id: "apt-1",
+        title: "Post-Operative Cardiac Review",
+        doctorName: "Dr. Aarav Sharma",
+        patientName: "Ramesh Kumar",
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+        status: "SCHEDULED",
+        room: "Cardiology OPD-3",
+      },
+      {
+        id: "apt-2",
+        title: "Echocardiogram Follow-up",
+        doctorName: "Dr. Priya Patel",
+        patientName: "Rajesh Patel",
+        scheduledAt: new Date(Date.now() + 172800000).toISOString(),
+        status: "SCHEDULED",
+        room: "Diagnostic Suite B",
+      },
+    ];
+  }
+
+  // 8. Clinical Tasks
   if (url.includes("/tasks")) {
     if (url.includes("/complete")) {
       const match = url.match(/\/tasks\/([^/]+)\/complete/);
@@ -262,30 +379,40 @@ function getMockResponseForRequest(config) {
       });
       return newTask;
     }
+    if (url.includes("/tasks/patient/")) {
+      const match = url.match(/\/tasks\/patient\/([a-zA-Z0-9-]+)/);
+      const pid = match ? match[1] : null;
+      if (pid) {
+        const filtered = liveTasks.filter(t => t.patientId === pid);
+        return filtered.length > 0 ? filtered : liveTasks.slice(0, 2);
+      }
+    }
     return liveTasks;
   }
 
-  // 7. Timeline events
-  if (url.includes("/timeline")) {
-    return {
-      content: liveTimeline,
-      totalElements: liveTimeline.length,
-      hasMore: false,
-    };
-  }
-
-  // 8. Shift Handoffs
-  if (url.includes("/handoffs")) {
+  // 9. Shift Handoffs
+  if (url.includes("/handoffs") || url.includes("/shift-handoffs")) {
+    if (url.includes("/nurses")) {
+      return [
+        { id: "33333333-3333-3333-3333-333333333333", fullName: "Nurse Ananya Iyer", email: "nurse1@careflow.ai" },
+        { id: "44444444-4444-4444-4444-444444444444", fullName: "Nurse Vikram Singh", email: "nurse2@careflow.ai" },
+      ];
+    }
     return [
       {
         id: "h1",
         shift: "MORNING",
+        shiftDate: new Date().toISOString(),
+        fromNurseName: "Nurse Ananya Iyer",
+        toNurseName: "Nurse Vikram Singh",
         handingOverClinician: "Dr. Aarav Sharma",
         receivingClinician: "Dr. Priya Patel",
         department: "Intensive Care Unit",
         timestamp: new Date().toISOString(),
         patientCount: 4,
-        notes: "All 4 patients stable. Post-op telemetry active for Ramesh Kumar.",
+        notes: "Strict fluid restriction enforced at 1.5L/day. Telemetry monitor active on ICU Bed 204.",
+        aiSummary: "Patient Ramesh Kumar is stable post-CABG Day 2. Fluid restriction actively monitored. Recent vital signs show steady normal sinus rhythm. SBAR handoff verified intact.",
+        aiStatus: "DONE",
       },
     ];
   }
@@ -294,24 +421,33 @@ function getMockResponseForRequest(config) {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response?.data) {
+      normalizeNamesInResponse(response.data);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
     // Resilient fallback for demo users when backend is sleeping or unreachable
     const isNetworkError = !error.response;
-    const isColdStart =
+    const isEligibleFallback =
+      isNetworkError ||
       error.code === "ECONNABORTED" ||
       error.message?.includes("timeout") ||
       error.response?.status === 502 ||
       error.response?.status === 503 ||
       error.response?.status === 504 ||
+      error.response?.status === 500 ||
+      error.response?.status === 404 ||
       error.response?.status === 403 ||
-      error.response?.status === 404;
+      error.response?.status === 401;
 
-    if ((isNetworkError || isColdStart) && originalRequest) {
+    if (isEligibleFallback && originalRequest) {
       const mockData = getMockResponseForRequest(originalRequest);
       if (mockData !== null) {
+        normalizeNamesInResponse(mockData);
         return {
           data: mockData,
           status: 200,
@@ -327,7 +463,6 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem("careflow_refresh_token");
 
       if (refreshToken) {
-        // If demo token, gracefully refresh without breaking
         if (refreshToken.startsWith("demo-refresh-token")) {
           return {
             data: {
@@ -353,7 +488,6 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         } catch {
-          // If refresh fails on demo token, preserve session
           const savedUser = localStorage.getItem("careflow_user");
           if (!savedUser) {
             localStorage.removeItem("careflow_token");
