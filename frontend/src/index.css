@@ -4,20 +4,21 @@
 
 @layer base {
   :root {
-    --bg-primary: #f6f8f7;
-    --bg-sidebar: #ffffff;
-    --bg-card: #ffffff;
-    --bg-subtle: #f1f5f3;
-    --bg-hover: #eaf0ed;
+    /* Balanced, normal-brightness clinical daylight theme */
+    --bg-primary: #eef2f6;       /* Calming soft slate canvas - stops blinding white glare */
+    --bg-sidebar: #f8fafc;       /* Muted neutral sidebar panel */
+    --bg-card: #ffffff;          /* Clean white cards floating on soft slate canvas */
+    --bg-subtle: #e2e8f0;        /* Subtle pill, input & badge background */
+    --bg-hover: #cbd5e1;         /* Defined, visible hover state */
 
-    --text-primary: #17211d;
-    --text-secondary: #53635b;
-    --text-muted: #83918a;
+    --text-primary: #0f172a;     /* Deep Slate 900 for high-clarity legibility */
+    --text-secondary: #334155;   /* Slate 700 for secondary text */
+    --text-muted: #64748b;       /* Slate 500 for captions & timestamps */
 
-    --border-color: #dfe7e2;
+    --border-color: #cbd5e1;     /* Slate 300 - clear, grounded structural borders */
 
-    --accent: #0f9f8f;
-    --accent-soft: rgba(15, 159, 143, 0.1);
+    --accent: #0d9488;           /* Clinical Teal 600 */
+    --accent-soft: rgba(13, 148, 136, 0.12);
   }
 
   .dark {
@@ -100,10 +101,18 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #36534a;
+  background: #64748b;
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #36534a;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #496a5f;
 }

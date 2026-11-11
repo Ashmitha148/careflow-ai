@@ -5,10 +5,10 @@ import { getTasks, startTask, completeTask } from "../services/taskApi";
 import { MOCK_TASKS } from "../services/mockDemoData";
 
 const statusStyles = {
-  PENDING: "bg-slate-500/10 text-slate-300 border border-slate-500/20",
-  IN_PROGRESS: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-  COMPLETED: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-  CANCELLED: "bg-rose-500/10 text-rose-400 border border-rose-500/20",
+  PENDING: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-400/30 dark:border-slate-500/20",
+  IN_PROGRESS: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 dark:border-amber-500/20",
+  COMPLETED: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 dark:border-emerald-500/20",
+  CANCELLED: "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 dark:border-rose-500/20",
 };
 
 export default function TasksPage() {
@@ -94,7 +94,7 @@ export default function TasksPage() {
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{task.description}</p>
               )}
               <div className="mt-1 flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
-                <span className="font-medium text-teal-300">{task.patientName || "Ramesh Kumar"}</span>
+                <span className="font-semibold text-teal-600 dark:text-teal-300">{task.patientName || "Ramesh Kumar"}</span>
                 <span>·</span>
                 <span>Assigned: {task.assignedNurseName || "Nurse Ananya Iyer"}</span>
                 <span>·</span>
@@ -109,7 +109,7 @@ export default function TasksPage() {
               {task.status === "PENDING" && (
                 <button
                   onClick={() => handleAction("start", task.id)}
-                  className="flex items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-sidebar)] px-3 py-1.5 text-xs font-semibold text-teal-400 hover:bg-teal-500/10 transition"
+                  className="flex items-center gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-500/10 transition shadow-sm"
                 >
                   <Play className="h-3.5 w-3.5" />
                   <span>Start Task</span>
