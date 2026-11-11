@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MOCK_USERS } from "../services/mockDemoData";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Activity, Stethoscope, Heart, Users, User, ChevronLeft, Zap } from "lucide-react";
+import { Activity, Stethoscope, Heart, Users, User, ChevronLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 // ─── Demo role definitions (only seeded accounts from V2 + V5 migrations) ───
@@ -135,7 +135,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         {/* ── Logo / Header ── */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500 text-slate-950">
             <Activity className="h-6 w-6" strokeWidth={2.2} />
           </div>
           <div className="text-center">
@@ -269,7 +269,7 @@ export default function Login() {
               onClick={() => { setShowDemo(true); setError(""); }}
               className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-teal-500/40 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
             >
-              <Zap className="h-4 w-4 text-teal-400" />
+              <ArrowRight className="h-4 w-4 text-teal-400" />
               Enter Demo
             </button>
 

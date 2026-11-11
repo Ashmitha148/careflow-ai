@@ -1,4 +1,4 @@
-import { Bot, FileSearch, Languages, MessageCircle, Sparkles, X } from "lucide-react";
+import { Bot, FileSearch, FileText, Languages, MessageCircle, X } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -10,7 +10,7 @@ import {
 
 const TABS = [
   { id: "qa", label: "Timeline Q&A", icon: MessageCircle },
-  { id: "summary", label: "Summary", icon: Sparkles },
+  { id: "summary", label: "Summary", icon: FileText },
   { id: "plain", label: "Plain language", icon: Languages },
   { id: "explain", label: "Explainability", icon: FileSearch },
 ];
@@ -180,7 +180,7 @@ export default function CopilotSidePanel() {
               disabled={loading}
               className="inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-xs font-semibold text-slate-950 disabled:opacity-60"
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <FileText className="h-3.5 w-3.5" />
               {loading ? "Summarizing..." : "Generate summary"}
             </button>
             {summary && (

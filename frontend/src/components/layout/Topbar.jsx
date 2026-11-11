@@ -65,8 +65,8 @@ export default function Topbar() {
 
         <div className="hidden min-w-0 sm:block">
           <p className="text-xs text-[var(--text-muted)]">Clinical workspace</p>
-          <p className="truncate text-sm font-medium">
-            Good to see you, {currentUser?.fullName?.split(" ")[0] ?? "there"}
+          <p className="truncate text-xs font-medium text-[var(--text-primary)]">
+            {currentUser?.fullName ?? "Staff"} · {currentUser?.role ?? "MEMBER"}
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function Topbar() {
 
           <input
             type="search"
-            placeholder="Search patients or MRNs..."
+            placeholder="Search patients, MRN…"
             className="h-10 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] pl-10 pr-4 text-xs text-[var(--text-primary)] outline-none transition focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/10"
           />
         </div>
@@ -86,9 +86,9 @@ export default function Topbar() {
           type="button"
           onClick={toggleCopilot}
           className={[
-            "flex items-center gap-2 rounded-xl px-2 py-2 text-xs font-medium transition-all sm:px-3",
+            "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3",
             isCopilotOpen
-              ? "bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/10"
+              ? "bg-teal-500 text-slate-950"
               : "border border-teal-500/20 bg-teal-500/5 text-teal-400 hover:bg-teal-500/10",
           ].join(" ")}
         >

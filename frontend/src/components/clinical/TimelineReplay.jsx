@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Clock3, Sparkles } from "lucide-react";
+import { Activity, Clock3, FileText } from "lucide-react";
 import { loadTimelineReplay } from "../../services/timelineHooks";
 import { getPatientSummary } from "../../services/copilotApi";
 import { useAuth } from "../../context/AuthContext";
@@ -74,8 +74,8 @@ export default function TimelineReplay({ patientId }) {
           disabled={summaryLoading}
           className="inline-flex items-center gap-1.5 rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-400 transition hover:bg-teal-500/20 disabled:opacity-60"
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          {summaryLoading ? "Summarizing..." : "AI summary"}
+          <FileText className="h-3.5 w-3.5" />
+          {summaryLoading ? "Synthesizing…" : "Clinical summary"}
         </button>
       </div>
 

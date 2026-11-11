@@ -149,14 +149,14 @@ export default function Sidebar() {
       >
       <div className="flex h-[72px] items-center border-b border-[var(--border-color)] px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500 text-slate-950 ">
             <Activity className="h-5 w-5" strokeWidth={2.2} />
           </div>
           <div>
             <div className="text-[15px] font-semibold tracking-tight">
               CareFlow
             </div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--text-muted)]">
+            <div className="text-[11px] font-normal text-[var(--text-muted)]">
               Clinical continuity
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-5">
-        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+        <p className="px-3 pb-1.5 text-[11px] font-medium text-[var(--text-muted)]">
           Workspace
         </p>
         <nav className="space-y-1">
@@ -176,7 +176,7 @@ export default function Sidebar() {
                 type="button"
                 onClick={() => handleNavClick(id, path)}
                 className={[
-                  "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200",
+                  "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-150",
                   active
                     ? "bg-teal-500/10 text-teal-400"
                     : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
@@ -201,17 +201,17 @@ export default function Sidebar() {
         </nav>
 
         <div className="my-6 border-t border-[var(--border-color)]" />
-        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
-          Intelligence
+        <p className="px-3 pb-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+          Clinical intelligence
         </p>
 
         <button
           type="button"
           onClick={() => setActiveTab("copilot")}
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-150 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
         >
           <div className="flex h-[17px] w-[17px] items-center justify-center">
-            <span className="h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.45)]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-teal-400" />
           </div>
           <span>CareFlow Copilot</span>
         </button>
@@ -221,7 +221,7 @@ export default function Sidebar() {
             type="button"
             onClick={() => handleNavClick("audit", "/audit")}
             className={[
-              "mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200",
+              "mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-150",
               activeId === "audit"
                 ? "bg-teal-500/10 text-teal-400"
                 : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",

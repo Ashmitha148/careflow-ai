@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowRightLeft, Users, Clock, FileText, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowRightLeft, Users, Clock, FileText, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import api from "../services/api";
