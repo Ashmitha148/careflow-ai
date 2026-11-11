@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { MOCK_USERS } from "../services/mockDemoData";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Activity, Stethoscope, Heart, Users, User, ChevronLeft, Zap } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -67,6 +68,11 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || "/";
 
+  // Pre-warm free-tier backend instance when login page loads
+  useEffect(() => {
+    fetch("/api/health").catch(() => {});
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -75,9 +81,21 @@ export default function Login() {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(
-        err?.response?.data?.message || "Invalid email or password. Please try again."
-      );
+      const isColdStart =
+        err?.code === "ECONNABORTED" ||
+        err?.message?.includes("timeout") ||
+        !err?.response ||
+        err?.response?.status === 502 ||
+        err?.response?.status === 504;
+      if (isColdStart) {
+        setError(
+          "Backend is spinning up from idle on the free tier (~30-45s). Please retry shortly or click 'Enter Demo' below for instant exploration."
+        );
+      } else {
+        setError(
+          err?.response?.data?.message || "Invalid email or password. Please try again."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -91,13 +109,21 @@ export default function Login() {
       await login(role.email, role.password);
       navigate(from, { replace: true });
     } catch (err) {
-      const isTimeout = err?.code === "ECONNABORTED" || err?.message?.includes("timeout") || !err?.response;
-      setError(
-        err?.response?.data?.message ||
-          (isTimeout
-            ? "The demo backend is waking up from idle (free tier). Please wait ~30 seconds and try again!"
-            : `Could not log in as demo ${role.label}. Please try again.`)
-      );
+      // Seamless zero-failure demo fallback for free-tier cold starts and network timeouts
+      const mockUser = MOCK_USERS[role.email];
+      if (mockUser) {
+        const demoData = {
+          token: "demo-jwt-token-" + (mockUser.role || "DOCTOR").toLowerCase(),
+          refreshToken: "demo-refresh-token-" + (mockUser.role || "DOCTOR").toLowerCase(),
+          user: { ...mockUser },
+        };
+        localStorage.setItem("careflow_token", demoData.token);
+        localStorage.setItem("careflow_refresh_token", demoData.refreshToken);
+        localStorage.setItem("careflow_user", JSON.stringify(demoData.user));
+        window.location.href = from;
+        return;
+      }
+      setError(`Could not log in as demo ${role.label}. Please try again.`);
       setShowDemo(false);
     } finally {
       setDemoLoading(null);

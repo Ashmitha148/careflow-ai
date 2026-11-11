@@ -94,7 +94,7 @@ public class HospitalService {
     @Transactional(readOnly = true)
     public List<StaffMemberResponse> listStaff(UUID hospitalId) {
         Hospital hospital = hospitalRepository.findById(hospitalId)
-                .orElseThrow(() -> new RuntimeException("Hospital not found: " + hospitalId));
+                .orElseThrow(() -> new IllegalArgumentException("Hospital not found: " + hospitalId));
         return userRepository.findByHospital_Id(hospital.getId()).stream()
                 .map(this::toStaffResponse)
                 .toList();
@@ -109,9 +109,9 @@ public class HospitalService {
     @Transactional
     public StaffMemberResponse assignStaff(UUID hospitalId, UUID userId) {
         Hospital hospital = hospitalRepository.findById(hospitalId)
-                .orElseThrow(() -> new RuntimeException("Hospital not found: " + hospitalId));
+                .orElseThrow(() -> new IllegalArgumentException("Hospital not found: " + hospitalId));
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         String previousHospital = user.getHospital() != null
                 ? user.getHospital().getName() : "unscoped";
