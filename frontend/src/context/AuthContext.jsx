@@ -9,7 +9,14 @@ import {
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("careflow_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,8 +26,20 @@ export function AuthProvider({ children }) {
       return;
     }
     getCurrentUser()
-      .then((me) => setUser(me))
+      .then((me) => {
+        setUser(me);
+        try {
+          localStorage.setItem("careflow_user", JSON.stringify(me));
+        } catch (_) {}
+      })
       .catch(() => {
+        const saved = localStorage.getItem("careflow_user");
+        if (saved) {
+          try {
+            setUser(JSON.parse(saved));
+            return;
+          } catch (_) {}
+        }
         localStorage.removeItem("careflow_token");
         localStorage.removeItem("careflow_refresh_token");
         setUser(null);

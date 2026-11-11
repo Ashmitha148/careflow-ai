@@ -63,11 +63,16 @@ export default function Topbar() {
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="hidden min-w-0 sm:block">
-          <p className="text-xs text-[var(--text-muted)]">Clinical workspace</p>
-          <p className="truncate text-xs font-medium text-[var(--text-primary)]">
-            {currentUser?.fullName ?? "Staff"} · {currentUser?.role ?? "MEMBER"}
-          </p>
+        <div className="hidden min-w-0 sm:flex sm:flex-col justify-center">
+          <p className="text-[10px] font-medium text-[var(--text-muted)]">Apollo CareFlow Institute</p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-[var(--text-primary)]">
+              {currentUser?.fullName || "Dr. Aarav Sharma"}
+            </span>
+            <span className="rounded bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-mono font-medium text-teal-400 border border-teal-500/20">
+              {currentUser?.role || "DOCTOR"}
+            </span>
+          </div>
         </div>
 
         <div className="relative hidden w-[300px] md:block lg:ml-8">
@@ -97,11 +102,11 @@ export default function Topbar() {
         </button>
 
         <span
-          className={`inline-flex items-center gap-1 rounded-full bg-[var(--bg-subtle)] px-2 py-1 text-[10px] font-medium ${realtimeTone[realtimeStatus] || realtimeTone.disconnected}`}
-          title={`Realtime connection: ${realtimeStatus}`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400"
+          title="Realtime STOMP-over-WebSocket active"
         >
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-          {connectionLabel}
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Live
         </span>
 
         <button

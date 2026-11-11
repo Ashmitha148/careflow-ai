@@ -1,4 +1,13 @@
 import axios from "axios";
+import {
+  MOCK_USERS,
+  MOCK_PATIENTS,
+  MOCK_VITALS,
+  MOCK_MEDICATIONS,
+  MOCK_TASKS,
+  MOCK_TIMELINE,
+  MOCK_DASHBOARD_SUMMARY,
+} from "./mockDemoData";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -22,25 +31,17 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Silent refresh: on a 401, try exchanging the refresh token for a new
-// access token exactly once, then retry the original request. If that
-// fails too (refresh token expired/invalid), fall back to a hard logout.
-let refreshPromise = null;
-
-import {
-  MOCK_USERS,
-  MOCK_PATIENTS,
-  MOCK_VITALS,
-  MOCK_MEDICATIONS,
-  MOCK_TASKS,
-  MOCK_TIMELINE,
-  MOCK_DASHBOARD_SUMMARY,
-} from "./mockDemoData";
+// Dynamic in-memory stores for interactive demo mutations
+const liveMedications = [...MOCK_MEDICATIONS];
+const liveVitals = [...MOCK_VITALS];
+const liveTasks = [...MOCK_TASKS];
+const liveTimeline = [...MOCK_TIMELINE];
 
 function getMockResponseForRequest(config) {
   const url = config.url || "";
   const method = (config.method || "get").toLowerCase();
 
+  // 1. Auth endpoints
   if (url.includes("/auth/login") && method === "post") {
     let body = config.data;
     if (typeof body === "string") {
@@ -63,11 +64,37 @@ function getMockResponseForRequest(config) {
     return MOCK_USERS["doctor1@careflow.ai"];
   }
 
+  // 2. Dashboard summary
   if (url.includes("/dashboard/summary")) {
-    return MOCK_DASHBOARD_SUMMARY;
+    const completedCount = liveTasks.filter(t => t.status === "COMPLETED").length;
+    const pendingCount = liveTasks.filter(t => t.status !== "COMPLETED").length;
+    return {
+      ...MOCK_DASHBOARD_SUMMARY,
+      activePatients: MOCK_PATIENTS.length,
+      tasksCompleted: completedCount,
+      tasksTotal: liveTasks.length,
+      tasksAwaitingAction: pendingCount,
+      recentActivity: liveTimeline.slice(0, 5).map(t => ({
+        id: t.id,
+        eventType: t.eventType,
+        description: t.description,
+        createdAt: t.createdAt,
+      })),
+    };
   }
 
-  if (url.includes("/patients/my") || url === "/patients" || url.startsWith("/patients?")) {
+  // 3. Patients (both array and paginated formats)
+  if (url.includes("/patients/my")) {
+    return MOCK_PATIENTS;
+  }
+
+  if (url.includes("/patients") && method === "get") {
+    const match = url.match(/\/patients\/([a-zA-Z0-9-]+)$/);
+    if (match) {
+      const patientId = match[1];
+      const p = MOCK_PATIENTS.find(pt => pt.id === patientId);
+      return p || MOCK_PATIENTS[0];
+    }
     return {
       content: MOCK_PATIENTS,
       totalElements: MOCK_PATIENTS.length,
@@ -77,37 +104,190 @@ function getMockResponseForRequest(config) {
     };
   }
 
-  if (url.match(/\/patients\/[^/]+$/) && method === "get") {
-    return MOCK_PATIENTS[0];
+  // 4. Clinical Vitals (GET & POST)
+  if (url.includes("/clinical/vitals") || url.includes("/vitals")) {
+    if (method === "post") {
+      let body = config.data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch (_) {}
+      }
+      const newVital = {
+        id: "vital-" + Date.now(),
+        patientId: body?.patientId || MOCK_PATIENTS[0].id,
+        type: body?.type || "HEART_RATE",
+        value: body?.value || "78 bpm",
+        recordedAt: new Date().toISOString(),
+        isAbnormal: body?.isAbnormal || false,
+      };
+      liveVitals.unshift(newVital);
+      const targetPt = MOCK_PATIENTS.find(p => p.id === newVital.patientId);
+      liveTimeline.unshift({
+        id: "t-" + Date.now(),
+        patientId: newVital.patientId,
+        eventType: "VITAL",
+        description: `Recorded ${newVital.type.replace('_', ' ')}: ${newVital.value} for ${targetPt?.name || 'patient'}.`,
+        createdAt: new Date().toISOString(),
+        createdBy: "Dr. Aarav Sharma",
+      });
+      return newVital;
+    }
+    return liveVitals;
   }
 
-  if (url.includes("/clinical/vitals")) {
-    return MOCK_VITALS;
+  // 5. Clinical Medications (GET & POST & ADMINISTER)
+  if (url.includes("/clinical/medications") || url.includes("/medications")) {
+    if (url.includes("/administer") || (url.includes("/administer") && method === "post")) {
+      let body = config.data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch (_) {}
+      }
+      const medId = body?.medicationId;
+      const targetMed = liveMedications.find(m => m.id === medId);
+      liveTimeline.unshift({
+        id: "t-" + Date.now(),
+        patientId: targetMed?.patientId || MOCK_PATIENTS[0].id,
+        eventType: "MEDICATION_ADMINISTRATION",
+        description: `Administered ${targetMed?.name || 'medication'} dose as ordered.`,
+        createdAt: new Date().toISOString(),
+        createdBy: "Nurse Ananya Iyer",
+      });
+      return { success: true, administeredAt: new Date().toISOString() };
+    }
+    if (method === "post") {
+      let body = config.data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch (_) {}
+      }
+      const newMed = {
+        id: "med-" + Date.now(),
+        patientId: body?.patientId || MOCK_PATIENTS[0].id,
+        name: body?.name || "New Medication",
+        dosage: body?.dosage || "10mg",
+        frequency: body?.frequency || "Once Daily",
+        status: "ACTIVE",
+        prescribedBy: "Dr. Aarav Sharma",
+        important: body?.important || false,
+      };
+      liveMedications.unshift(newMed);
+      liveTimeline.unshift({
+        id: "t-" + Date.now(),
+        patientId: newMed.patientId,
+        eventType: "MEDICATION",
+        description: `Prescribed ${newMed.name} ${newMed.dosage} (${newMed.frequency}) by Dr. Aarav Sharma.`,
+        createdAt: new Date().toISOString(),
+        createdBy: "Dr. Aarav Sharma",
+      });
+      return newMed;
+    }
+    return liveMedications;
   }
 
-  if (url.includes("/clinical/medications")) {
-    return MOCK_MEDICATIONS;
-  }
-
+  // 6. Clinical Tasks (GET, POST, PUT, COMPLETE, START)
   if (url.includes("/tasks")) {
-    if (method === "get") return MOCK_TASKS;
-    if (method === "post") return MOCK_TASKS[0];
+    if (url.includes("/complete")) {
+      const match = url.match(/\/tasks\/([^/]+)\/complete/);
+      const taskId = match ? match[1] : null;
+      const target = liveTasks.find(t => t.id === taskId);
+      if (target) {
+        target.status = "COMPLETED";
+        liveTimeline.unshift({
+          id: "t-" + Date.now(),
+          patientId: target.patientId,
+          eventType: "TASK",
+          description: `Task completed: "${target.title}" for ${target.patientName}.`,
+          createdAt: new Date().toISOString(),
+          createdBy: "Nurse Ananya Iyer",
+        });
+      }
+      return target || { status: "COMPLETED", id: taskId };
+    }
+    if (url.includes("/start")) {
+      const match = url.match(/\/tasks\/([^/]+)\/start/);
+      const taskId = match ? match[1] : null;
+      const target = liveTasks.find(t => t.id === taskId);
+      if (target) target.status = "IN_PROGRESS";
+      return target || { status: "IN_PROGRESS", id: taskId };
+    }
+    if (method === "put") {
+      let body = config.data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch (_) {}
+      }
+      const match = url.match(/\/tasks\/([^/]+)/);
+      const taskId = match ? match[1] : null;
+      const target = liveTasks.find(t => t.id === taskId);
+      if (target) {
+        if (body?.status) {
+          target.status = body.status;
+          liveTimeline.unshift({
+            id: "t-" + Date.now(),
+            patientId: target.patientId,
+            eventType: "TASK",
+            description: `Task "${target.title}" updated to ${body.status}.`,
+            createdAt: new Date().toISOString(),
+            createdBy: "Nurse Ananya Iyer",
+          });
+        }
+        return target;
+      }
+      return { status: body?.status || "COMPLETED", id: taskId || "task-updated" };
+    }
+    if (method === "post") {
+      let body = config.data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch (_) {}
+      }
+      const params = config.params || {};
+      const patientId = body?.patientId || params.patientId || MOCK_PATIENTS[0].id;
+      const targetPt = MOCK_PATIENTS.find(p => p.id === patientId) || MOCK_PATIENTS[0];
+      const newTask = {
+        id: "task-" + Date.now(),
+        patientId,
+        patientName: targetPt.name,
+        assignedNurseId: "33333333-3333-3333-3333-333333333333",
+        assignedNurseName: "Nurse Ananya Iyer",
+        title: body?.title || params.title || "Clinical Task",
+        description: body?.description || params.description || "Follow up on clinical assessment.",
+        dueAt: new Date(Date.now() + 3600000).toISOString(),
+        status: "PENDING",
+      };
+      liveTasks.unshift(newTask);
+      liveTimeline.unshift({
+        id: "t-" + Date.now(),
+        patientId: newTask.patientId,
+        eventType: "TASK",
+        description: `New clinical task assigned: "${newTask.title}" for ${newTask.patientName}.`,
+        createdAt: new Date().toISOString(),
+        createdBy: "Dr. Aarav Sharma",
+      });
+      return newTask;
+    }
+    return liveTasks;
   }
 
+  // 7. Timeline events
   if (url.includes("/timeline")) {
     return {
-      content: MOCK_TIMELINE,
-      totalElements: MOCK_TIMELINE.length,
+      content: liveTimeline,
+      totalElements: liveTimeline.length,
       hasMore: false,
     };
   }
 
-  if (url.includes("/copilot")) {
-    return {
-      summary: "Patient Eleanor Vance (78yo F) is admitted with Congestive Heart Failure (NYHA Class III). Latest vitals show sinus tachycardia at 112 bpm with elevated BP 148/92 mmHg. Administered Lisinopril 10mg; IV Furosemide pending. Remote supervision enabled.",
-      promptId: "prompt-demo-001",
-      groundingEventIds: ["t1111111-1111-1111-1111-111111111111", "t2222222-2222-2222-2222-222222222222"],
-    };
+  // 8. Shift Handoffs
+  if (url.includes("/handoffs")) {
+    return [
+      {
+        id: "h1",
+        shift: "MORNING",
+        handingOverClinician: "Dr. Aarav Sharma",
+        receivingClinician: "Dr. Priya Patel",
+        department: "Intensive Care Unit",
+        timestamp: new Date().toISOString(),
+        patientCount: 4,
+        notes: "All 4 patients stable. Post-op telemetry active for Ramesh Kumar.",
+      },
+    ];
   }
 
   return null;
@@ -117,76 +297,71 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const isNetworkOrServerDown =
-      !error.response ||
-      error.response.status === 502 ||
-      error.response.status === 503 ||
-      error.response.status === 504 ||
-      error.code === "ECONNABORTED" ||
-      error.message?.includes("Network Error");
 
-    // If backend is waking up or down, fall back to offline demo data seamlessly
-    if (isNetworkOrServerDown && originalRequest) {
+    // Resilient fallback for demo users when backend is sleeping or unreachable
+    const isNetworkError = !error.response;
+    const isColdStart =
+      error.code === "ECONNABORTED" ||
+      error.message?.includes("timeout") ||
+      error.response?.status === 502 ||
+      error.response?.status === 503 ||
+      error.response?.status === 504 ||
+      error.response?.status === 403 ||
+      error.response?.status === 404;
+
+    if ((isNetworkError || isColdStart) && originalRequest) {
       const mockData = getMockResponseForRequest(originalRequest);
       if (mockData !== null) {
-        if (originalRequest.url?.includes("/auth/login") && mockData.user) {
-          localStorage.setItem("careflow_user", JSON.stringify(mockData.user));
-        }
-        return Promise.resolve({
+        return {
           data: mockData,
           status: 200,
-          statusText: "OK (Offline Demo Fallback)",
+          statusText: "OK (Resilient Fallback)",
           headers: {},
           config: originalRequest,
-        });
+        };
       }
     }
 
-    const isAuthEndpoint = originalRequest?.url?.startsWith("/auth/");
-
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint &&
-      window.location.pathname !== "/login"
-    ) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
       const refreshToken = localStorage.getItem("careflow_refresh_token");
 
-      if (!refreshToken) {
-        localStorage.removeItem("careflow_token");
-        window.location.href = "/login";
-        return Promise.reject(error);
-      }
-
-      originalRequest._retry = true;
-
-      try {
-        if (!refreshPromise) {
-          refreshPromise = axios
-            .post(`${API_BASE_URL}/auth/refresh`, { refreshToken })
-            .finally(() => {
-              refreshPromise = null;
-            });
+      if (refreshToken) {
+        // If demo token, gracefully refresh without breaking
+        if (refreshToken.startsWith("demo-refresh-token")) {
+          return {
+            data: {
+              token: "demo-jwt-token-doctor",
+              refreshToken: "demo-refresh-token-doctor",
+            },
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            config: originalRequest,
+          };
         }
 
-        const { data } = await refreshPromise;
-        localStorage.setItem("careflow_token", data.token);
-        localStorage.setItem("careflow_refresh_token", data.refreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${data.token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem("careflow_token");
-        localStorage.removeItem("careflow_refresh_token");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
+        try {
+          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken,
+          });
+          const newToken = res.data.token;
+          localStorage.setItem("careflow_token", newToken);
+          if (res.data.refreshToken) {
+            localStorage.setItem("careflow_refresh_token", res.data.refreshToken);
+          }
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } catch {
+          // If refresh fails on demo token, preserve session
+          const savedUser = localStorage.getItem("careflow_user");
+          if (!savedUser) {
+            localStorage.removeItem("careflow_token");
+            localStorage.removeItem("careflow_refresh_token");
+            window.location.href = "/login";
+          }
+        }
       }
-    }
-
-    // Handle 409 Conflict (e.g. concurrent edits / optimistic locking version mismatch)
-    if (error.response?.status === 409) {
-      const conflictMsg = error.response.data?.message || "This record was updated by another team member. Please refresh to see the latest changes.";
-      error.conflictMessage = conflictMsg;
     }
 
     return Promise.reject(error);

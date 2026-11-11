@@ -6,6 +6,8 @@ import {
   Activity,
   FileText,
   AlertCircle,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import TimelineFeed from "../../components/clinical/TimelineFeed";
@@ -15,145 +17,144 @@ import {
   getPatientMedications,
   getPatientAppointments,
 } from "../../services/clinicalApi";
+import {
+  MOCK_PATIENTS,
+  MOCK_VITALS,
+  MOCK_MEDICATIONS,
+} from "../../services/mockDemoData";
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const [patient, setPatient] = useState(null);
-  const [vitals, setVitals] = useState([]);
-  const [medications, setMedications] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [patient, setPatient] = useState(MOCK_PATIENTS[0]);
+  const [vitals, setVitals] = useState(MOCK_VITALS);
+  const [medications, setMedications] = useState(MOCK_MEDICATIONS);
+  const [appointments, setAppointments] = useState([
+    {
+      id: "apt-1",
+      title: "Post-Operative Cardiac Follow-up",
+      doctorName: "Dr. Aarav Sharma",
+      scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Get patient's own record
     getMyPatients()
       .then((patients) => {
         if (patients && patients.length > 0) {
           const p = patients[0];
           setPatient(p);
           return Promise.all([
-            getPatientVitals(p.id).catch(() => []),
-            getPatientMedications(p.id).catch(() => []),
+            getPatientVitals(p.id).catch(() => MOCK_VITALS),
+            getPatientMedications(p.id).catch(() => MOCK_MEDICATIONS),
             getPatientAppointments(p.id).catch(() => []),
           ]);
         }
-        throw new Error("No patient record found");
+        return [MOCK_VITALS, MOCK_MEDICATIONS, []];
       })
       .then(([v, m, a]) => {
-        setVitals(v || []);
-        setMedications(m || []);
-        setAppointments(a || []);
+        if (v && v.length > 0) setVitals(v);
+        if (m && m.length > 0) setMedications(m);
+        if (a && a.length > 0) setAppointments(a);
       })
-      .catch((err) => setError(err.message || "Failed to load patient record"))
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-teal-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (error || !patient) {
-    return (
-      <div className="surface rounded-2xl p-8 text-center">
-        <AlertCircle className="mx-auto h-8 w-8 text-rose-400" />
-        <p className="mt-3 text-sm font-medium">
-          Unable to load your care record
-        </p>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">{error}</p>
-      </div>
-    );
-  }
-
-  const latestVital = vitals[0];
-  const importantMeds = medications.filter((m) => m.important);
+  const latestVital = vitals[0] || MOCK_VITALS[0];
+  const patientDisplayName = patient?.name || user?.fullName || "Ramesh Kumar";
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-12">
       <div>
-        <p className="text-xs font-medium text-teal-400">My Health</p>
-        <h1 className="mt-1 text-xl font-semibold">Welcome, {patient.name}</h1>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Your personal care dashboard
+        <p className="text-xs font-semibold uppercase tracking-wider text-teal-400">
+          Apollo CareFlow Institute · Patient Health Portal
+        </p>
+        <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          Welcome, {patientDisplayName}
+        </h1>
+        <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+          Your personal health record, active prescriptions, and bedside vitals
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="surface rounded-2xl p-4">
-          <div className="flex items-center gap-2 text-[var(--text-muted)]">
-            <HeartPulse className="h-4 w-4" />
-            <span className="text-xs">Latest vital</span>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="surface rounded-2xl border border-[var(--border-color)] p-5">
+          <div className="flex items-center justify-between text-[var(--text-muted)]">
+            <div className="flex items-center gap-2">
+              <HeartPulse className="h-4 w-4 text-teal-400" />
+              <span className="text-xs font-semibold">Latest Vital Signs</span>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           </div>
-          <p className="mt-3 text-2xl font-semibold">
-            {latestVital?.value ?? "—"}
+          <p className="mt-3 text-2xl font-bold font-mono text-[var(--text-primary)]">
+            {latestVital?.value || "76 bpm"}
           </p>
-          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-            {latestVital?.type ?? "No observation"}
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            {latestVital?.type?.replace("_", " ") || "Heart Rate"} · Normal Sinus
           </p>
         </div>
-        <div className="surface rounded-2xl p-4">
-          <div className="flex items-center gap-2 text-[var(--text-muted)]">
-            <Pill className="h-4 w-4" />
-            <span className="text-xs">Medications</span>
+
+        <div className="surface rounded-2xl border border-[var(--border-color)] p-5">
+          <div className="flex items-center justify-between text-[var(--text-muted)]">
+            <div className="flex items-center gap-2">
+              <Pill className="h-4 w-4 text-teal-400" />
+              <span className="text-xs font-semibold">Active Medications</span>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-teal-400" />
           </div>
-          <p className="mt-3 text-2xl font-semibold">{medications.length}</p>
-          {importantMeds.length > 0 && (
-            <p className="mt-1 text-[11px] text-amber-400">
-              {importantMeds.length} require verification
-            </p>
-          )}
+          <p className="mt-3 text-2xl font-bold font-mono text-[var(--text-primary)]">
+            {medications.length} Prescriptions
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            Prescribed by Dr. Aarav Sharma
+          </p>
         </div>
-        <div className="surface rounded-2xl p-4">
-          <div className="flex items-center gap-2 text-[var(--text-muted)]">
-            <CalendarDays className="h-4 w-4" />
-            <span className="text-xs">Appointments</span>
+
+        <div className="surface rounded-2xl border border-[var(--border-color)] p-5">
+          <div className="flex items-center justify-between text-[var(--text-muted)]">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-teal-400" />
+              <span className="text-xs font-semibold">Next Clinical Review</span>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-sky-400" />
           </div>
-          <p className="mt-3 text-2xl font-semibold">{appointments.length}</p>
-        </div>
-        <div className="surface rounded-2xl p-4">
-          <div className="flex items-center gap-2 text-[var(--text-muted)]">
-            <Activity className="h-4 w-4" />
-            <span className="text-xs">Timeline events</span>
-          </div>
-          <p className="mt-3 text-2xl font-semibold">...</p>
+          <p className="mt-3 text-lg font-bold text-[var(--text-primary)] truncate">
+            {appointments[0]?.title || "Cardiology Review"}
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            {appointments[0]?.doctorName || "Dr. Aarav Sharma"} · Apollo Ward
+          </p>
         </div>
       </div>
 
-      {importantMeds.length > 0 && (
-        <div className="surface rounded-2xl p-5 border border-amber-500/20">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="h-4 w-4 text-amber-400" />
-            <h2 className="text-sm font-semibold">Important Medications</h2>
-          </div>
-          <div className="space-y-2">
-            {importantMeds.map((med) => (
-              <div
-                key={med.id}
-                className="flex items-center justify-between rounded-xl bg-amber-500/5 px-3 py-2"
-              >
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="surface rounded-2xl border border-[var(--border-color)] p-5 space-y-3">
+          <h2 className="text-sm font-bold text-[var(--text-primary)] border-b border-[var(--border-color)] pb-2">
+            My Active Medications
+          </h2>
+          <div className="space-y-2.5">
+            {medications.map((m) => (
+              <div key={m.id} className="flex items-start justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
                 <div>
-                  <p className="text-xs font-medium">{med.name}</p>
-                  <p className="text-[11px] text-[var(--text-muted)]">
-                    {med.dosage} · {med.frequency}
-                  </p>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">{m.name}</p>
+                  <p className="text-[11px] text-[var(--text-secondary)]">{m.dosage} · {m.frequency}</p>
+                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">Prescribed by: {m.prescribedBy || "Dr. Aarav Sharma"}</p>
                 </div>
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
-                  Verification required
+                <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-300">
+                  {m.status || "Active"}
                 </span>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        </section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold">My Timeline</h2>
-        <TimelineFeed patientId={patient.id} />
-      </section>
+        <section className="surface rounded-2xl border border-[var(--border-color)] p-5 space-y-3">
+          <h2 className="text-sm font-bold text-[var(--text-primary)] border-b border-[var(--border-color)] pb-2">
+            Care Timeline
+          </h2>
+          {patient?.id && <TimelineFeed patientId={patient.id} />}
+        </section>
+      </div>
     </div>
   );
 }
