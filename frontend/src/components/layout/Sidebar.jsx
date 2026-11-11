@@ -16,6 +16,29 @@ import { useEffect } from "react";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../context/AuthContext";
 
+function getClinicianName(user) {
+  const name = user?.fullName || "";
+  if (!name || name.includes("Sarah Jenkins") || user?.email === "doctor1@careflow.ai") {
+    return "Dr. Aarav Sharma";
+  }
+  if (name.includes("Michael Chen") || user?.email === "doctor2@careflow.ai") {
+    return "Dr. Priya Patel";
+  }
+  if (name.includes("Emily Watson") || user?.email === "nurse1@careflow.ai") {
+    return "Nurse Ananya Iyer";
+  }
+  if (name.includes("James Rivera") || user?.email === "nurse2@careflow.ai") {
+    return "Nurse Vikram Singh";
+  }
+  if (name.includes("Maria Rodriguez") || user?.email === "caregiver@careflow.ai") {
+    return "Sunita Verma";
+  }
+  if (name.includes("Eleanor Vance") || user?.email === "patient@careflow.ai") {
+    return "Ramesh Kumar";
+  }
+  return name;
+}
+
 const getNavigation = (role) => {
   switch (role) {
     case "PATIENT":
@@ -106,8 +129,9 @@ const getNavigation = (role) => {
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveTab, activeTab, isMobileNavOpen, setMobileNavOpen } = useStore();
+  const { setActiveTab, activeTab, isMobileNavOpen, setMobileNavOpen, toggleCopilot } = useStore();
   const { user, logout, isAdmin } = useAuth();
+  const clinicianName = getClinicianName(user);
 
   const navigation = getNavigation(user?.role);
   const currentPath = location.pathname;
@@ -207,7 +231,10 @@ export default function Sidebar() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("copilot")}
+          onClick={() => {
+            toggleCopilot();
+            setMobileNavOpen(false);
+          }}
           className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors duration-150 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
         >
           <div className="flex h-[17px] w-[17px] items-center justify-center">
@@ -236,14 +263,14 @@ export default function Sidebar() {
       <div className="border-t border-[var(--border-color)] p-4">
         <div className="flex items-center gap-3 rounded-xl bg-[var(--bg-subtle)] px-3 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-sm font-semibold text-teal-400">
-            {user?.fullName?.charAt(0) ?? "C"}
+            {clinicianName?.charAt(0) ?? "C"}
           </div>
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
-              {user?.fullName ?? "CareFlow user"}
+              {clinicianName}
             </p>
             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-              {user?.role ?? "USER"}
+              {user?.role ?? "DOCTOR"}
             </p>
           </div>
           <button

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export const useStore = create((set, get) => ({
   activeTab: 'timeline', // 'timeline', 'replay', 'tasks', 'copilot', 'audit'
-  selectedPatientId: 'b0000000-0000-0000-0000-000000000001',
+  selectedPatientId: 'a1111111-1111-1111-1111-111111111111',
   selectedEventType: null, // EventType filter
   isCopilotOpen: false,
   isMobileNavOpen: false, // off-canvas sidebar drawer on < lg screens

@@ -417,6 +417,65 @@ function getMockResponseForRequest(config) {
     ];
   }
 
+  // 10. Copilot AI Assistant endpoints
+  if (url.includes("/copilot")) {
+    const params = config.params || {};
+    const patientId = params.patientId || MOCK_PATIENTS[0].id;
+    const targetPt = MOCK_PATIENTS.find(p => p.id === patientId) || MOCK_PATIENTS[0];
+
+    if (url.includes("/timeline-question")) {
+      const q = typeof config.data === "string" ? config.data.toLowerCase() : "";
+      if (q.includes("vital") || q.includes("bp") || q.includes("heart") || q.includes("spo2")) {
+        return `Based on real-time telemetry from ICU Bed 204 for ${targetPt.name}: Heart rate is 78 bpm (normal sinus rhythm), Blood Pressure is 124/82 mmHg, and SpO2 is 98% on room air. All vital signs are currently stable with no acute arrhythmia detected in the last 4 hours.`;
+      }
+      if (q.includes("med") || q.includes("drug") || q.includes("dose")) {
+        return `Active medication regimen for ${targetPt.name}: Furosemide 40mg IV BID (last administered at 08:00 AM by Nurse Ananya Iyer), Enoxaparin 40mg SC daily, and Metformin 500mg PO BID. Strict 1.5L/day fluid restriction is actively enforced.`;
+      }
+      if (q.includes("alert") || q.includes("critical") || q.includes("risk")) {
+        return `Risk assessment for ${targetPt.name}: Hemodynamically stable post-CABG Day 2. One low-potassium alert was flagged at 06:15 AM (3.4 mEq/L) and resolved after KCl infusion protocol. Current clinical status: Monitored & Stable.`;
+      }
+      return `CareFlow AI clinical analysis for ${targetPt.name} (MRN: ${targetPt.mrn}): Patient is admitted under Dr. Aarav Sharma. Vital signs and bedside telemetry demonstrate positive cardiovascular recovery. All ordered medications have been administered on schedule by Nurse Ananya Iyer. Continued telemetry monitoring is recommended for the next 24 hours.`;
+    }
+
+    if (url.includes("/patient-summary")) {
+      return `**CLINICAL EXECUTIVE SUMMARY — ${targetPt.name} (${targetPt.mrn})**\n\n` +
+        `• **Admitting Diagnosis:** ${targetPt.diagnoses?.join(", ") || "Congestive Heart Failure"}\n` +
+        `• **Attending Physician:** Dr. Aarav Sharma | **Primary Nurse:** Nurse Ananya Iyer\n` +
+        `• **Bed / Location:** ${targetPt.room || "ICU-204"}\n` +
+        `• **Vitals Baseline:** HR 78 bpm, BP 124/82 mmHg, SpO2 98%, Temp 36.8°C.\n` +
+        `• **Recent Interventions:** Strict 1.5L fluid balance maintained; Furosemide 40mg IV administered; Post-op telemetry active.\n` +
+        `• **Clinical Trajectory:** Stable recovery trajectory. Pending afternoon cardiology rounds for step-down evaluation.`;
+    }
+
+    if (url.includes("/plain-language")) {
+      return `Here is what this means in simple, everyday language for ${targetPt.name} and their family:\n\n` +
+        `Your heart is beating in a healthy, steady rhythm, and your blood pressure is well within the safe normal range. The medicine given today is helping remove extra fluid so your heart doesn't have to work as hard. Overall, you are healing very well, and the care team is keeping a close watch to keep you safe and comfortable.`;
+    }
+
+    if (url.includes("/history")) {
+      return [
+        {
+          id: "hist-1",
+          patientId: targetPt.id,
+          featureName: "Timeline Q&A",
+          aiResponse: "Confirmed stable vitals (HR 78 bpm, BP 124/82 mmHg) with normal sinus rhythm.",
+          retrievedContext: "Timeline event: Vitals recorded by Nurse Ananya Iyer (HR: 78 bpm, BP: 124/82 mmHg, SpO2: 98%).",
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: "hist-2",
+          patientId: targetPt.id,
+          featureName: "Patient Summary",
+          aiResponse: "Executive SBAR summary generated: Stable post-CABG Day 2, fluid balance strictly tracked.",
+          retrievedContext: "Timeline events: 4 medications administered, 2 lab panels reviewed, 1 fluid intake logged.",
+          createdAt: new Date(Date.now() - 7200000).toISOString(),
+        },
+      ];
+    }
+
+    return { success: true };
+  }
+
   return null;
 }
 
