@@ -155,6 +155,7 @@ cd frontend && npm install && npm run dev
 
 ## Documentation Index
 
+* [`docs/SENIOR_ENGINEERING_REPORT.md`](docs/SENIOR_ENGINEERING_REPORT.md) — **Comprehensive Senior Engineering Technical Report & Hiring Manager Assessment**.
 * [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Comprehensive technical architecture and data flow.
 * [`docs/API.md`](docs/API.md) — REST endpoint specifications, request/response models, and auth contracts.
 * [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) — Concurrency benchmarks, k6 load testing, and horizontal scaling.
