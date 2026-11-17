@@ -29,6 +29,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
     private final WebSocketTopicAuthorizer topicAuthorizer;
 
+    @Value("${careflow.websocket.relay.enabled:false}")
+    private boolean relayEnabled;
+
+    @Value("${careflow.websocket.relay.host:localhost}")
+    private String relayHost;
+
+    @Value("${careflow.websocket.relay.port:61613}")
+    private int relayPort;
+
+    @Value("${careflow.websocket.relay.client-login:guest}")
+    private String relayClientLogin;
+
+    @Value("${careflow.websocket.relay.client-passcode:guest}")
+    private String relayClientPasscode;
+
     public WebSocketConfig(@Value("${careflow.cors.allowed-origins}") String allowedOrigins,
                            JwtHandshakeInterceptor jwtHandshakeInterceptor,
                            WebSocketTopicAuthorizer topicAuthorizer) {
@@ -39,7 +54,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic", "/queue");
+        if (relayEnabled) {
+            // Enterprise multi-node cluster: relay to distributed RabbitMQ / ActiveMQ broker
+            registry.enableStompBrokerRelay("/topic", "/queue")
+                    .setRelayHost(relayHost)
+                    .setRelayPort(relayPort)
+                    .setClientLogin(relayClientLogin)
+                    .setClientPasscode(relayClientPasscode)
+                    .setSystemLogin(relayClientLogin)
+                    .setSystemPasscode(relayClientPasscode);
+        } else {
+            // Single-node / in-memory development broker
+            registry.enableSimpleBroker("/topic", "/queue");
+        }
         registry.setApplicationDestinationPrefixes("/app");
         registry.setUserDestinationPrefix("/user");
     }

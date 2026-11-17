@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: careflow-backend
+  namespace: careflow-prod
+  labels:
+    app.kubernetes.io/name: careflow-backend
+    app.kubernetes.io/part-of: careflow-ai
+    app.kubernetes.io/tier: backend
+spec:
+  replicas: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: careflow-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: careflow-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/api/actuator/prometheus"
+        prometheus.io/port: "8080"
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: backend
+          image: ghcr.io/ashmitha148/careflow-ai-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:+UseZGC -XX:+ZGenerational -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: careflow-secrets
+                  key: database-url
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: careflow-secrets
+                  key: database-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: careflow-secrets
+                  key: database-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: careflow-secrets
+                  key: jwt-secret
+            - name: REDIS_HOST
+              value: "redis-cluster.careflow-prod.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: WS_RELAY_ENABLED
+              value: "true"
+            - name: WS_RELAY_HOST
+              value: "rabbitmq.careflow-prod.svc.cluster.local"
+            - name: WS_RELAY_PORT
+              value: "61613"
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /api/actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
