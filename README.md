@@ -2,14 +2,12 @@
 
 [![Java](https://img.shields.io/badge/Java-21%20LTS-007396?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Virtual Threads](https://img.shields.io/badge/Concurrency-Virtual%20Threads%20(Loom)-blue?style=flat)](https://openjdk.org/jeps/444)
+[![Concurrency](https://img.shields.io/badge/Concurrency-Virtual%20Threads%20%26%20Optimistic%20Locking-blue?style=flat)](docs/SYSTEM_DESIGN.md)
+[![Realtime](https://img.shields.io/badge/Realtime-STOMP%20WebSocket%20Bus-teal?style=flat)](docs/SYSTEM_DESIGN.md)
+[![Architecture](https://img.shields.io/badge/Architecture-Event--Driven%20Outbox-purple?style=flat)](docs/SYSTEM_DESIGN.md)
 [![Tests](https://img.shields.io/badge/Tests-50%2F50%20Passing-brightgreen?style=flat)](https://github.com/Ashmitha148/careflow-ai/actions)
-[![Scale](https://img.shields.io/badge/Scale-1M%20Concurrent%20Ready-orange?style=flat)](docs/SCALING_TO_1M_USERS.md)
-[![Architecture](https://img.shields.io/badge/Design-Senior%20SDE%20Report-purple?style=flat)](docs/SENIOR_ENGINEERING_REPORT.md)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%20Flyway%20V1--V12-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%20Flyway-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Google Gemini](https://img.shields.io/badge/Gemini-1.5%20Flash-8E75B2?style=flat&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Swagger](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?style=flat&logo=swagger&logoColor=black)](https://careflow-ai-beta.vercel.app/api/swagger-ui/index.html)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com/)
@@ -18,25 +16,22 @@
 
 🏥 **[Live Demo Application](https://careflow-ai-beta.vercel.app)** — Click **"Enter Demo"** on the login page for instant role-based access.  
 📖 **[Interactive Swagger API Docs](https://careflow-ai-beta.vercel.app/api/swagger-ui/index.html)** — Explore and execute REST endpoints live.  
-📑 **[Senior Engineering Report & Hiring Manager Assessment](docs/SENIOR_ENGINEERING_REPORT.md)** — In-depth architectural evaluation and interview talking points.  
-🚀 **[1-Million User Scaling Manual & Kubernetes Architecture](docs/SCALING_TO_1M_USERS.md)** — Production cluster blueprint and distributed load testing guide.
+📐 **[Systems Architecture & Technical Design Specification](docs/SYSTEM_DESIGN.md)** — In-depth architectural design, concurrency patterns, and data flow.  
+🚀 **[Horizontal Scaling & Kubernetes Manual](docs/SCALING_TO_1M_USERS.md)** — Production cluster blueprint, PgBouncer pooling, and distributed STOMP relay.
 
 ---
 
-### 🎯 Recruiter & Technical Hiring Manager Summary
+### Core Architecture & Technical Capabilities
 
-> **"Why does this project stand out compared to standard bootcamp / tutorial apps?"**  
-> CareFlow AI was architected to demonstrate **Senior/Staff Software Engineer competency** across distributed systems, concurrency control, scalable realtime communication, and fault-tolerant cloud patterns:
-
-| Senior Engineering Capability | Implementation in CareFlow AI | Concrete System Impact |
+| Architecture Pillar | Technical Implementation | Production Impact |
 |:---|:---|:---|
-| **1M Concurrent Users Scalability** | Java 21 Virtual Threads (Loom) + Keyset Cursor Pagination ($O(\log N)$) + Kubernetes HPA ([`k8s/`](k8s/)) | Scales from 10 to 120 pods handling 65,000+ RPS without thread starvation or table scan degradation. |
-| **Zero-Overwrites Concurrency** | JPA `@Version` Optimistic Concurrency Control (Flyway V12) | Prevents race conditions when multiple nurses/doctors update the same inpatient; fails fast with `HTTP 409 Conflict`. |
+| **High-Throughput Scalability** | Java 21 Virtual Threads (Loom) + Keyset Cursor Pagination ($O(\log N)$) + Kubernetes HPA ([`k8s/`](k8s/)) | Scales from 10 to 120 pods handling 65,000+ RPS without thread starvation or table scan degradation. |
+| **Zero-Overwrites Concurrency** | JPA `@Version` Optimistic Concurrency Control (Flyway V12) | Prevents race conditions when multiple clinicians update the same inpatient; fails fast with `HTTP 409 Conflict`. |
 | **Realtime Without Refetch Storms** | STOMP-over-WebSocket + Client-side TanStack Query Cache Patching | Sub-second telemetry broadcast to role-scoped topics; patches browser memory directly with **zero redundant HTTP round-trips**. |
 | **Distributed Asynchronous Delivery** | Transactional Outbox Pattern (`outbox_events` + background relay) | Guarantees atomic DB writes and at-least-once message delivery without distributed 2PC transaction locks. |
 | **Enterprise Token Security** | Dual-Token JWT (15m Access + 7d Sliding Refresh) + SHA-256 Token Families | Cryptographic reuse detection (Flyway V8) blocks token replay theft; Redis provides sub-millisecond session blacklisting. |
 | **Resilience & Third-Party AI Safety** | Resilience4j Circuit Breakers + Grounded Gemini Explainability Audit Trail | External LLM latency spikes trip circuits cleanly (<5ms fallback); every AI insight logs exact timeline grounding citations in `ai_prompt_history`. |
-| **Production Engineering Rigor** | 50/50 Automated Integration Tests Passing + 12 Flyway Migrations + 6 ADRs | Deterministic schema evolution, JaCoCo code coverage, and documented architectural decision records. |
+| **Schema Evolution & Reliability** | 50/50 Automated Integration Tests Passing + 12 Flyway Migrations + 6 ADRs | Deterministic schema evolution, JaCoCo code coverage, and documented architectural decision records. |
 
 ---
 
@@ -179,7 +174,7 @@ cd frontend && npm install && npm run dev
 
 ## Documentation Index
 
-* [`docs/SENIOR_ENGINEERING_REPORT.md`](docs/SENIOR_ENGINEERING_REPORT.md) — **Comprehensive Senior Engineering Technical Report & Hiring Manager Assessment**.
+* [`docs/SYSTEM_DESIGN.md`](docs/SYSTEM_DESIGN.md) — **Systems Architecture & Technical Design Specification**.
 * [`docs/SCALING_TO_1M_USERS.md`](docs/SCALING_TO_1M_USERS.md) — **1-Million Concurrent Users Scaling Manual & Kubernetes Architecture**.
 * [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Comprehensive technical architecture and data flow.
 * [`docs/API.md`](docs/API.md) — REST endpoint specifications, request/response models, and auth contracts.
